@@ -40,6 +40,7 @@ Keep each run small and focused. A task that is too big gets split into sub-bull
 - **Never** store durable-only state in Redis or in process memory.
 - **Never** use `any` unless justified by an inline comment. Prefer `unknown` plus Zod parsing.
 - **Never** make destructive git operations (force push, history rewrite) unless the human asks.
+- **Never** create, modify, or delete files outside the project root (`C:\Users\arhat\Projects\Hookline`). - - **Never** change global tool configuration, environment variables, or system settings. Install tools only via npm (project-local preferred), never via system installers or with elevated privileges. If a task seems to require otherwise, mark it BLOCKED and log it.
 
 ## 4. Architecture rules
 
