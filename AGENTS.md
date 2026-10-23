@@ -148,3 +148,27 @@ A task is done only if **all** are true:
 - [ ] Docs updated
 - [ ] `PHASES.md` checkbox updated
 - [ ] `LOGS.md` entry appended
+
+## 14. Autonomous mode (applies only when the human's goal says so)
+
+When the goal states "autonomous mode", these rules override section 2 ("don't start another phase") and section 12 ("stop and ask"). Everything else in this file still applies.
+
+**Workspace boundary (highest priority).** The only place you may create, modify, move, or delete files is `C:\Users\arhat\Projects\Hookline`. Full-access permissions don't change that. Before any write, confirm the target resolves inside the root (watch for `..`, absolute paths, symlinks, and flags like `--prefix`/`--out-dir`/`--cwd`). Never touch the home directory, other projects, dotfiles, credentials, environment variables, PATH, the registry, shell profiles, or Docker Desktop settings. No global config changes (`git config --global`, `npm config set -g`). Implicit tool side effects (npm/pnpm caches, OS temp dir, Docker's own images and volumes) are fine. If you discover you modified something outside the root, record it in LOGS.md and revert only that change.
+
+**Tools.** Prefer project-local installs. You may `npm install -g` an npm-distributed tool if truly needed (log it). Never use system installers (winget, choco, scoop, MSI/EXE) or try to elevate privileges. If something needs admin rights, mark the task BLOCKED and move on. Never wait on a permission prompt.
+
+**Docker.** Only this project's compose files, project name `hookline`. Bind mounts only inside the root. No privileged containers, no host drive or Docker socket mounts, no `docker system prune`, and don't touch containers, images, networks, or volumes this project didn't create.
+
+**Secrets.** `.env` exists with valid local secrets. Never overwrite, regenerate, or delete it. Add new variables to `.env.example` and append them to `.env` without touching existing lines. Never commit or log secrets. Never make outbound requests to arbitrary internet hosts from app or test code.
+
+**Windows/cross-platform.** Everything must also work on Linux CI: no bash-only npm scripts (use Node scripts, `cross-env`, `rimraf`), LF line endings, no reliance on openssl, make, curl, sed, or grep (generate secrets with Node's `crypto`). gRPC: no `protoc` binary. Use `@grpc/proto-loader` with `proto-loader-gen-types` and document it. If `node -v` differs from `.nvmrc`, log it rather than changing Node. On port conflicts, pick a free port and record it in `.env.example` and README.
+
+**Decisions without a human.** Follow the docs. If they're silent, take the simplest option consistent with ARCHITECTURE.md and the security rules, and log the decision. If docs conflict, use this precedence: AGENTS.md hard rules > DATA.md and API.md > ARCHITECTURE.md > PRD.md > PHASES.md. Fix the lower doc and log it.
+
+**Git.** One branch per phase (`phase-N/short-description`) from `main`. Conventional Commits, small and often. After a phase is fully verified, merge it into `main` locally with `--no-ff`. Never push, force-push, rewrite history, or delete branches. You may discard your own uncommitted changes.
+
+**Dependencies.** Pin exact versions, log the reason, and verify the package exists on the registry before adding it. Never invent package names.
+
+**Failure handling.** Max 3 distinct fix attempts per failure. Never disable lint, loosen TypeScript, or skip, delete, or weaken tests to get green. If still failing: discard uncommitted changes for that task, reset the checkbox to `[ ]`, add `BLOCKED: <reason>` under it in PHASES.md, write a detailed LOGS.md entry, and continue with an independent task. If no independent tasks remain or exit criteria can't be met, stop. Don't build later phases on a broken base. Never fake implementations to tick a box. Docker unreachable: retry once, then mark Docker-dependent tasks BLOCKED.
+
+**Finishing.** Leave `main` building and verified with a clean working tree. Run the full verification suite and record real results. Append a final LOGS.md entry titled "AUTONOMOUS RUN SUMMARY": phases done, tasks done vs blocked, every decision made without a human, dependencies added, doc inconsistencies and resolutions, boundary or environment issues, known risks, and the first thing the human should review.
