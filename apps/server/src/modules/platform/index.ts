@@ -20,6 +20,8 @@ export {
 } from './logger/request-context.js';
 export { DatabaseService } from './database/database.service.js';
 export { DatabaseModule } from './database/database.module.js';
+export { TenantScope, tenantScope } from './database/tenant-scope.js';
+export { SecretCipher } from './crypto/secret-cipher.js';
 export { RedisService } from './redis/redis.service.js';
 export { RedisModule } from './redis/redis.module.js';
 export { AppError, type ErrorDetail } from './errors/app-error.js';

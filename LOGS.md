@@ -244,3 +244,52 @@ Append-only. **After every run**, add a new entry at the **bottom** using the te
 ### Next steps
 
 - Phase 3: domain tables (endpoints, events, deliveries, attempts, api_keys, audit_logs, stats), prefixed ULID IDs, API key auth with Redis cache, AES-256-GCM secret encryption, seed script
+
+---
+
+## Run 004: 2026-10-24
+
+- **Agent / tool:** zcode, GLM-5.3
+- **Phase / task:** Phase 3: all tasks (domain schema, repos, API keys, crypto, audit, seed, tests)
+- **Status:** completed
+
+### What I did
+
+- Migration 0002: all 8 domain tables with enums and every index from DATA.md (verified partial/unique/desc indexes in the generated SQL)
+- Repositories per owning module: api-keys, endpoints (+health), events, deliveries (+attempts), audit, analytics — all tenant queries go through `TenantScope`
+- ApiKeysService: `hl_live_{hex-prefix}_{base64url-secret}` (hex prefix keeps the format unambiguously parseable — base64url prefixes/underscores caused a real bug), SHA-256 hash storage, Redis cache `hl:apikey:{prefix}` 60s, revocation cache-busting, expiry checks, throttled `last_used_at` (1/min)
+- ApiKeyGuard with `@RequireScopes()` metadata (401/403 via standard error body)
+- `SecretCipher` (AES-256-GCM, `v1.iv.tag.ciphertext` format) with tamper tests; endpoints store encrypted secrets, rotation keeps the previous secret for a grace window
+- AuditService write/list (append-only) + audit entries for key/endpoint lifecycle
+- Seed (`pnpm db:seed`): demo user via BA sign-up, org, 2 endpoints + 1 API key (secrets printed once); verified against the dev DB
+- Integration tests: 9 API key lifecycle tests (valid resolve, wrong secret, malformed, revoked-immediate, expired, scope 403, last_used throttle, audit entries, at-rest encryption)
+
+### Files changed
+
+- `apps/server/src/modules/{api-keys,endpoints,events,deliveries,audit,analytics}/**`, `src/seed.ts`, `drizzle/0002_*.sql`, eslint boundary regex (allow `index.js` form), module wiring in AppModule
+
+### Decisions made
+
+- `*.schema.ts` files are exempt from the module-boundary lint rule: FK definitions need cross-module table references (declarative; the DATA.md ownership rule governs queries, which still go through the owning repo)
+- Boundary regex now allows `../<module>/index.js` (NodeNext extension form) while banning other deep imports
+- drizzle `text[]` columns type as `string[]`; ApiKeyRow narrows scopes with a validated cast
+- Seed uses BA `signUpEmail` (no admin plugin), direct inserts for org/member with random ids
+
+### Commands run and results
+
+- `pnpm lint` / `typecheck` / `build`: pass
+- `pnpm test`: 29 unit tests pass
+- `pnpm test:int`: 18 integration tests pass (3 files)
+- `pnpm db:seed`: success against dev DB
+
+### Docs updated
+
+- PHASES.md (Phase 3 ticked); DATA.md matches implementation (no drift found)
+
+### Issues, risks, open questions
+
+- None open. Fastify parse-error shape still tracked for Phase 4.
+
+### Next steps
+
+- Phase 4: Zod-to-OpenAPI + Swagger UI, endpoints CRUD + SSRF validator, POST /v1/events with idempotency and rate limiting, read endpoints with cursor pagination

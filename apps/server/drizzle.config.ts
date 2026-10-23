@@ -14,7 +14,15 @@ if (!url) {
 
 export default defineConfig({
   dialect: 'postgresql',
-  schema: ['./src/modules/auth/auth-schema.ts'],
+  schema: [
+    './src/modules/auth/auth-schema.ts',
+    './src/modules/api-keys/api-keys.schema.ts',
+    './src/modules/endpoints/endpoints.schema.ts',
+    './src/modules/events/events.schema.ts',
+    './src/modules/deliveries/deliveries.schema.ts',
+    './src/modules/audit/audit.schema.ts',
+    './src/modules/analytics/analytics.schema.ts',
+  ],
   out: './drizzle',
   dbCredentials: { url },
   verbose: true,
