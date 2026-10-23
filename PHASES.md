@@ -33,7 +33,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 **Goal:** a clean, buildable monorepo skeleton.
 **Exit criteria:** `pnpm install && pnpm build && pnpm lint && pnpm typecheck` all pass on an empty skeleton.
 
-- [ ] Initialize git repo, `.gitignore`, `.editorconfig`, `.nvmrc`
+- [x] Initialize git repo, `.gitignore`, `.editorconfig`, `.nvmrc`
 - [x] Add the eight root docs (README, PRD, PHASES, ARCHITECTURE, DATA, API, AGENTS, LOGS)
 - [ ] Set up pnpm workspace and Turborepo (`pnpm-workspace.yaml`, `turbo.json`)
 - [ ] Create skeletons: `apps/web`, `apps/server`, `packages/shared`, `packages/proto`, `packages/config`
