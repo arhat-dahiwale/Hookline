@@ -10,6 +10,8 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "db:generate": "pnpm --filter @hookline/server db:generate",
+    "db:migrate": "pnpm --filter @hookline/server db:migrate",
     "lint": "eslint .",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
