@@ -12,7 +12,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 | 1     | Local infra & server skeleton | [x]    |
 | 2     | Auth & multi-tenancy          | [x]    |
 | 3     | Domain schema & API keys      | [x]    |
-| 4     | Public REST API               | [ ]    |
+| 4     | Public REST API               | [x]    |
 | 5     | Delivery engine               | [ ]    |
 | 6     | Resilience                    | [ ]    |
 | 7     | tRPC & dashboard foundation   | [ ]    |
@@ -98,16 +98,16 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 **Goal:** the full public API from API.md section 1, documented via OpenAPI.
 **Exit criteria:** an integrator can create an endpoint and send an event, and the delivery rows exist (not yet delivered).
 
-- [ ] Zod-to-OpenAPI integration, Swagger UI at `/docs`, spec at `/openapi.json`
-- [ ] Endpoints CRUD, enable/disable, rotate-secret
-- [ ] SSRF-safe URL validator (shared by REST and tRPC)
-- [ ] `POST /v1/events` with validation, size limit, and event-type format
-- [ ] Idempotency-Key handling (Postgres unique + Redis fast path)
-- [ ] Transactional fan-out: event + delivery rows in one transaction
-- [ ] Event and delivery read endpoints with cursor pagination
-- [ ] Ingestion rate limiting (Redis token bucket) with `RateLimit-*` headers
-- [ ] Consistent error codes per API.md
-- [ ] Integration and contract tests for every route
+- [x] Zod-to-OpenAPI integration, Swagger UI at `/docs`, spec at `/openapi.json`
+- [x] Endpoints CRUD, enable/disable, rotate-secret
+- [x] SSRF-safe URL validator (shared by REST and tRPC)
+- [x] `POST /v1/events` with validation, size limit, and event-type format
+- [x] Idempotency-Key handling (Postgres unique + Redis fast path)
+- [x] Transactional fan-out: event + delivery rows in one transaction
+- [x] Event and delivery read endpoints with cursor pagination
+- [x] Ingestion rate limiting (Redis token bucket) with `RateLimit-*` headers
+- [x] Consistent error codes per API.md
+- [x] Integration and contract tests for every route
 
 ## Phase 5: Delivery engine
 

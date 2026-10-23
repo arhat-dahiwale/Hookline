@@ -4,6 +4,7 @@ import { newId } from '@hookline/shared';
 import { and, desc, eq, isNull } from 'drizzle-orm';
 
 import { DatabaseService } from '../platform/database/database.service.js';
+import type { TransactionHandle } from '../platform/database/unit-of-work.js';
 import { TenantScope } from '../platform/database/tenant-scope.js';
 import { endpointHealth, endpoints } from './endpoints.schema.js';
 
@@ -54,6 +55,38 @@ export class EndpointsRepository {
       .where(eq(endpoints.id, id))
       .limit(1);
     return row ?? null;
+  }
+
+  /**
+   * Fan-out matching within the caller's transaction (UnitOfWork): active,
+   * non-deleted endpoints whose event-type filter matches. Empty filter
+   * matches everything; filters support exact types and `prefix.*`.
+   */
+  async listActiveForEventTx(
+    tx: TransactionHandle,
+    scope: TenantScope,
+    eventType: string,
+    endpointIds?: string[],
+  ): Promise<EndpointRow[]> {
+    const rows = await tx
+      .select()
+      .from(endpoints)
+      .where(
+        and(
+          scope.whereColumn(endpoints.organizationId),
+          isNull(endpoints.deletedAt),
+          eq(endpoints.status, 'active'),
+        ),
+      );
+    return rows.filter((row) => {
+      if (endpointIds && !endpointIds.includes(row.id)) return false;
+      if (row.eventTypes.length === 0) return true;
+      return row.eventTypes.some(
+        (pattern) =>
+          pattern === eventType ||
+          (pattern.endsWith('.*') && eventType.startsWith(pattern.slice(0, -1))),
+      );
+    });
   }
 
   async listActive(scope: TenantScope): Promise<EndpointRow[]> {

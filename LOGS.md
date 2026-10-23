@@ -293,3 +293,52 @@ Append-only. **After every run**, add a new entry at the **bottom** using the te
 ### Next steps
 
 - Phase 4: Zod-to-OpenAPI + Swagger UI, endpoints CRUD + SSRF validator, POST /v1/events with idempotency and rate limiting, read endpoints with cursor pagination
+
+---
+
+## Run 005: 2026-10-24
+
+- **Agent / tool:** zcode, GLM-5.3
+- **Phase / task:** Phase 4: all tasks (OpenAPI, endpoints CRUD, events ingestion, idempotency, rate limiting, contract tests)
+- **Status:** completed
+
+### What I did
+
+- `packages/shared`: SSRF URL validator (creation-time gate; IPv4/IPv6 blocked ranges incl. CGNAT, metadata, IPv4-mapped), event/endpoint Zod schemas, monotonic prefixed ULIDs (`monotonicFactory` — plain ulid() is not monotonic within a millisecond)
+- Public REST: endpoints CRUD (+enable/disable/rotate-secret/health with real 24h stats), events ingestion with transactional fan-out (UnitOfWork: event + deliveries in one tx), events/deliveries reads with keyset cursor pagination
+- Idempotency: Redis fast path (`hl:idem:` 24h TTL) + Postgres unique constraint authority + unique-race fallback; 200 + `Idempotent-Replay: true` on replay, 422 `idempotency_key_reuse` on payload mismatch
+- Rate limiting: Lua token bucket (`hl:rl:ingest:{keyId}`, 50/s refill, burst 100) with RateLimit-*/Retry-After headers on all ingestion responses; 429 via the standard error body
+- OpenAPI 3 spec via `@asteasolutions/zod-to-openapi` (12 paths) at `/openapi.json`, Swagger UI at `/docs` (@fastify/static + swagger-ui-dist)
+- Tests: 17-route integration/contract suite (fan-out matching, endpointIds restriction, SSRF negatives, idempotency replay/conflict, pagination, cross-tenant 404, rate limit, OpenAPI coverage, error shapes incl. Fastify 413 mapped through our filter)
+
+### Files changed
+
+- `packages/shared/src/{ssrf,schemas,ids}.ts`, `apps/server/src/modules/{events,endpoints,deliveries,api-docs}/**`, platform pagination + token bucket + UnitOfWork, module wiring with cached dynamic modules
+
+### Decisions made
+
+- **Module caching:** dynamic `forRoot()` modules are cached per class — Nest treats distinct dynamic-module objects as separate modules and registered controllers twice ("Method GET already declared")
+- Fan-out matching runs INSIDE the ingestion transaction via `*Tx` repository methods (UnitOfWork is the sanctioned cross-module tx path); event-type filters support exact + `prefix.*`
+- Dynamic-module classes import `.forRoot()` results (not raw classes — a raw class without decorators is an empty module)
+- Ingestion defaults: 50 events/s per key, burst 100 (documented in API.md)
+- Fastify parse errors (>1MB body) DO reach the Nest exception filter and render in the standard shape (the Phase 1 concern is resolved; 413 covered by a test)
+- New deps: `@asteasolutions/zod-to-openapi@9.1.0`, `swagger-ui-dist@5.34.0`, `@fastify/static@10.1.7`
+
+### Commands run and results
+
+- `pnpm lint` / `typecheck` / `build`: pass
+- `pnpm test`: 38 unit tests pass
+- `pnpm test:int`: 35 integration tests pass (4 files)
+- Live: `/openapi.json` 200 (12 paths), `/docs` + swagger bundle 200, `/health/ready` 200
+
+### Docs updated
+
+- PHASES.md (Phase 4 ticked); API.md unchanged (implementation matches; `test`, `replay`, `replay-failed` routes land in Phase 5 as planned)
+
+### Issues, risks, open questions
+
+- None open. Deliveries remain `pending` until the Phase 5 engine enqueues jobs.
+
+### Next steps
+
+- Phase 5: BullMQ queues, enqueue-after-commit, worker processor with signing + SSRF-checked HTTP client, backoff, dead transition, event bus, test receiver, Testcontainers integration tests
