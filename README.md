@@ -104,8 +104,13 @@ pnpm install
 cp .env.example .env            # then fill in secrets
 docker compose -f docker-compose.dev.yml up -d   # postgres + redis
 pnpm db:migrate
-pnpm dev                        # web on :3000, api on :4000
+pnpm dev                        # server on :4000 (web dashboard arrives in Phase 7)
 ```
+
+> Dev Postgres and Redis publish on host ports **15432** and **16379**
+> (`POSTGRES_PORT` / `REDIS_PORT` in `.env`) to avoid conflicts with native
+> services on 5432/6379. `DATABASE_URL` and `REDIS_URL` in `.env` already
+> point there.
 
 ### Run the full demo topology
 
