@@ -12,6 +12,7 @@
     "build": "turbo run build",
     "db:generate": "pnpm --filter @hookline/server db:generate",
     "db:migrate": "pnpm --filter @hookline/server db:migrate",
+    "db:seed": "pnpm --filter @hookline/server db:seed",
     "lint": "eslint .",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",

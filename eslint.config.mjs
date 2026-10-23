@@ -31,6 +31,10 @@ const moduleBoundaryRules = SERVER_MODULES.flatMap((moduleName) => {
   if (otherModules.length === 0) return [];
   return [
     {
+      // Schema files are exempt: FK definitions need cross-module table
+      // references (declarative only — DATA.md's ownership rule is about
+      // queries, which still go through the owning module's repository).
+      ignores: [`apps/server/src/modules/${moduleName}/*.schema.ts`],
       files: [`apps/server/src/modules/${moduleName}/**/*.ts`],
       rules: {
         'no-restricted-imports': [
@@ -38,10 +42,10 @@ const moduleBoundaryRules = SERVER_MODULES.flatMap((moduleName) => {
           {
             patterns: [
               {
-                // `../<other>/...` or `../../<other>/...` (deep import). The bare
-                // `../<other>` (public index) does not match because it has no
-                // trailing slash + path segment.
-                regex: String.raw`(\.\./)+(${otherModules.join('|')})/`,
+                // `../<other>/...` (deep import) is banned. The public index
+                // import is allowed in both forms: `../<other>` (bare) and
+                // `../<other>/index.js` (NodeNext extension form).
+                regex: String.raw`(\.\./)+(${otherModules.join('|')})/(?!index\.js$).+`,
                 message: `Module "${moduleName}" may import other modules only via their public index.ts (e.g. ../${otherModules[0]}), never deep imports. See ARCHITECTURE.md section 4.`,
               },
             ],

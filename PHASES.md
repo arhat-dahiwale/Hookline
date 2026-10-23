@@ -11,7 +11,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 | 0     | Repo foundation               | [x]    |
 | 1     | Local infra & server skeleton | [x]    |
 | 2     | Auth & multi-tenancy          | [x]    |
-| 3     | Domain schema & API keys      | [ ]    |
+| 3     | Domain schema & API keys      | [x]    |
 | 4     | Public REST API               | [ ]    |
 | 5     | Delivery engine               | [ ]    |
 | 6     | Resilience                    | [ ]    |
@@ -82,16 +82,16 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 **Goal:** all core tables exist and API key auth works.
 **Exit criteria:** a request with a valid API key resolves its organization. Revoked or invalid keys are rejected.
 
-- [ ] Migrations for `endpoints`, `endpoint_health`, `events`, `deliveries`, `delivery_attempts`, `api_keys`, `audit_logs`, `delivery_stats_hourly`
-- [ ] Enums and indexes exactly as specified in DATA.md
-- [ ] Repository layer per module (no cross-module table access)
-- [ ] ID generation helpers (prefixed ULIDs)
-- [ ] API key generation, hashing, and Redis-cached lookup
-- [ ] `ApiKeyGuard` with scope checks and `last_used_at` throttled updates
-- [ ] AES-256-GCM encryption helper for endpoint secrets
-- [ ] Audit module with write helper
-- [ ] Seed script (demo org, user, endpoints)
-- [ ] Integration tests for API key lifecycle
+- [x] Migrations for `endpoints`, `endpoint_health`, `events`, `deliveries`, `delivery_attempts`, `api_keys`, `audit_logs`, `delivery_stats_hourly`
+- [x] Enums and indexes exactly as specified in DATA.md
+- [x] Repository layer per module (no cross-module table access)
+- [x] ID generation helpers (prefixed ULIDs)
+- [x] API key generation, hashing, and Redis-cached lookup
+- [x] `ApiKeyGuard` with scope checks and `last_used_at` throttled updates
+- [x] AES-256-GCM encryption helper for endpoint secrets
+- [x] Audit module with write helper
+- [x] Seed script (demo org, user, endpoints)
+- [x] Integration tests for API key lifecycle
 
 ## Phase 4: Public REST API
 
