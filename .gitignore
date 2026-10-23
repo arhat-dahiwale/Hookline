@@ -32,3 +32,5 @@ test-results/
 *.tsbuildinfo
 .cache/
 tmp/
+# integration test env (written by global setup)
+apps/server/test/int/.testenv.json

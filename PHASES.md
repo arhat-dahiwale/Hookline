@@ -10,7 +10,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 | ----- | ----------------------------- | ------ |
 | 0     | Repo foundation               | [x]    |
 | 1     | Local infra & server skeleton | [x]    |
-| 2     | Auth & multi-tenancy          | [ ]    |
+| 2     | Auth & multi-tenancy          | [x]    |
 | 3     | Domain schema & API keys      | [ ]    |
 | 4     | Public REST API               | [ ]    |
 | 5     | Delivery engine               | [ ]    |
@@ -66,16 +66,16 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 **Goal:** users can sign up, sign in, and work inside organizations.
 **Exit criteria:** two users in separate orgs cannot see each other's data (tested).
 
-- [ ] Drizzle migration tooling (`db:generate`, `db:migrate`)
-- [ ] Install Better Auth and generate its schema (organization plugin enabled)
-- [ ] NestJS integration (raw body handling, mounted at `/api/auth/*`)
-- [ ] Email/password sign-up and sign-in
-- [ ] Organization create/switch, member roles (`owner`, `admin`, `member`)
-- [ ] Shared `resolveSession()` function (used by tRPC context and WebSocket handshake)
-- [ ] `SessionGuard` and `RolesGuard`
-- [ ] Tenant-scoping helper enforcing `organization_id` on queries
-- [ ] Integration tests: auth flows, cross-tenant isolation
-- [ ] (Stretch) 2FA plugin
+- [x] Drizzle migration tooling (`db:generate`, `db:migrate`)
+- [x] Install Better Auth and generate its schema (organization plugin enabled)
+- [x] NestJS integration (raw body handling, mounted at `/api/auth/*`)
+- [x] Email/password sign-up and sign-in
+- [x] Organization create/switch, member roles (`owner`, `admin`, `member`)
+- [x] Shared `resolveSession()` function (used by tRPC context and WebSocket handshake)
+- [x] `SessionGuard` and `RolesGuard`
+- [x] Tenant-scoping helper enforcing `organization_id` on queries
+- [x] Integration tests: auth flows, cross-tenant isolation
+- [x] (Stretch) 2FA plugin
 
 ## Phase 3: Domain schema & API keys
 

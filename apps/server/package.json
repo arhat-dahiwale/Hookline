@@ -6,16 +6,19 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
     "dev": "node scripts/dev.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "test:int": "vitest run --config vitest.config.int.ts --passWithNoTests"
+    "test:int": "vitest run --config vitest.config.int.ts"
   },
   "dependencies": {
     "@hookline/shared": "workspace:*",
     "@nestjs/common": "12.2.0",
     "@nestjs/core": "12.2.0",
     "@nestjs/platform-fastify": "12.2.0",
+    "better-auth": "1.7.12",
     "dotenv": "18.0.9",
     "drizzle-orm": "0.45.4",
     "fastify": "5.12.7",
@@ -30,8 +33,12 @@
     "@hookline/config": "workspace:*",
     "@nestjs/testing": "12.2.0",
     "@swc/core": "1.16.20",
+    "@testcontainers/postgresql": "12.2.1",
+    "@testcontainers/redis": "12.2.1",
     "@types/node": "24.19.2",
     "@types/pg": "8.23.1",
+    "drizzle-kit": "0.31.11",
+    "light-my-request": "6.8.0",
     "testcontainers": "12.2.1",
     "unplugin-swc": "2.0.0"
   }

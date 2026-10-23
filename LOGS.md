@@ -195,3 +195,52 @@ Append-only. **After every run**, add a new entry at the **bottom** using the te
 ### Next steps
 
 - Phase 2: Drizzle migration tooling, Better Auth + organization plugin, session/roles guards, tenant scoping, integration tests (Testcontainers global setup lands here)
+
+---
+
+## Run 003: 2026-10-24
+
+- **Agent / tool:** zcode, GLM-5.3
+- **Phase / task:** Phase 2: all tasks including the 2FA stretch
+- **Status:** completed
+
+### What I did
+
+- Drizzle migration tooling: `drizzle.config.ts`, `pnpm db:generate` / `db:migrate` (root proxies), migrations committed under `apps/server/drizzle/`
+- Better Auth 1.7.12 with organization + twoFactor plugins; schema generated via `@better-auth/cli@1.4.21` into `src/modules/auth/auth-schema.ts` (never hand-edited), migrations 0000/0001 applied
+- Auth module: `AuthService` (BA instance over the platform DB, `resolveSession()`, `getMemberRole()`), `SessionGuard` (401 via standard error body), `RolesGuard` + `@MinRole()` (member<admin<owner), `TenantScope` helper in platform (loud failure on missing org id)
+- BA mounted at `/api/auth/*` on Fastify via a Fetch bridge (`auth.handler`), registered pre-ready; JSON bodies re-serialized (Fastify's parser wins over scoped parsers — verified empirically)
+- Integration test infra: `global-setup.ts` starts Postgres+Redis Testcontainers, applies migrations, writes `.testenv.json` (gitignored); `createTestApplication()` boots the full app with fastify inject
+- Tests: 8 auth-flow/isolation tests + 1 full 2FA TOTP test (RFC 6238 implemented in-test); unit tests for role ordering and TenantScope
+
+### Files changed
+
+- `apps/server/src/modules/auth/**`, `apps/server/auth.config.ts`, `apps/server/drizzle/*` (2 migrations), `apps/server/test/int/**`, drizzle config + scripts, DATA.md/PHASES.md
+
+### Decisions made
+
+- Better Auth adapter requires an explicit schema mapping (drizzle adapter) — passing generated tables incl. `twoFactor`
+- `AppModule` re-exports feature modules so test root modules and protocol layers can resolve guards
+- More `import type` DI traps fixed (guards) — SWC emits `Object` metadata for type-only imports; rule of thumb: constructor-injected services are always value imports
+- 2FA enabled with TOTP (issuer `Hookline`); sign-in gated flow verified end-to-end
+- drizzle-kit glob `src/modules/**/*.schema.ts` did not match nested dirs — schema paths are explicit in drizzle.config.ts for now
+
+### Commands run and results
+
+- `pnpm lint` / `typecheck` / `build`: pass
+- `pnpm test`: 25 unit tests pass
+- `pnpm test:int`: 9 integration tests pass (2 files)
+- Dev DB: migrations 0000+0001 applied via `pnpm db:migrate`
+
+### Docs updated
+
+- PHASES.md (Phase 2 ticked), DATA.md (two_factor table now generated)
+
+### Issues, risks, open questions
+
+- Fastify parse errors outside Nest still render in Fastify's shape (tracked from Phase 1; matters in Phase 4)
+- BA sign-up returns 200 (not 201) in this version — documented in tests
+
+### Next steps
+
+- Phase 3: domain tables (endpoints, events, deliveries, attempts, api_keys, audit_logs, stats), prefixed ULID IDs, API key auth with Redis cache, AES-256-GCM secret encryption, seed script

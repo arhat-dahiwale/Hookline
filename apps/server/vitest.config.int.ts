@@ -10,7 +10,15 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   // SWC transform: emits the decorator metadata Nest DI needs (esbuild, the
   // default Vite/Vitest transform, does not support emitDecoratorMetadata).
-  plugins: [swc.vite()],
+  plugins: [
+    swc.vite({
+      jsc: {
+        parser: { syntax: 'typescript', decorators: true },
+        transform: { legacyDecorator: true, decoratorMetadata: true },
+        target: 'es2022',
+      },
+    }),
+  ],
   resolve: {
     alias: {
       '@hookline/shared': fileURLToPath(
