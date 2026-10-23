@@ -7,6 +7,7 @@ import { and, desc, eq, lt, gt, sql } from 'drizzle-orm';
 
 import { DatabaseService } from '../platform/database/database.service.js';
 import { TenantScope } from '../platform/database/tenant-scope.js';
+import type { TransactionHandle } from '../platform/database/unit-of-work.js';
 import { events } from './events.schema.js';
 
 export type EventRow = typeof events.$inferSelect;
@@ -35,7 +36,20 @@ export class EventsRepository {
     payload: unknown;
     idempotencyKey?: string | null;
   }): Promise<EventRow> {
-    const [row] = await this.database.db
+    return this.insertTx(this.database.db as unknown as TransactionHandle, input);
+  }
+
+  /** Insert inside the ingestion transaction (UnitOfWork). */
+  async insertTx(
+    tx: TransactionHandle,
+    input: {
+      organizationId: string;
+      type: string;
+      payload: unknown;
+      idempotencyKey?: string | null;
+    },
+  ): Promise<EventRow> {
+    const [row] = await tx
       .insert(events)
       .values({
         id: newId('evt'),

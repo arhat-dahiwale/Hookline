@@ -5,6 +5,7 @@ import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 
 import { AppModule } from '../../src/app.module.js';
+import { registerApiDocsRoutes } from '../../src/modules/api-docs/index.js';
 import { registerBetterAuthRoutes } from '../../src/modules/auth/index.js';
 import { parseEnv } from '../../src/modules/platform/index.js';
 import { loadTestEnv } from './test-env.js';
@@ -29,6 +30,7 @@ export async function createTestApplication(controllers: Type[] = []): Promise<T
     logger: false,
   });
   registerBetterAuthRoutes(app);
+  registerApiDocsRoutes(app);
   await app.init();
   const instance = app.getHttpAdapter().getInstance() as FastifyInstance;
   return { app, instance };

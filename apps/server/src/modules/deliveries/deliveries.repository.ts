@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { newId } from '@hookline/shared';
 
-import { and, asc, desc, eq, inArray, lt, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm';
 
 import { DatabaseService } from '../platform/database/database.service.js';
 import { TenantScope } from '../platform/database/tenant-scope.js';
+import type { TransactionHandle } from '../platform/database/unit-of-work.js';
 import { deliveryAttempts, deliveries } from './deliveries.schema.js';
 
 export type DeliveryRow = typeof deliveries.$inferSelect;
@@ -19,6 +20,18 @@ export class DeliveriesRepository {
   async insertMany(rows: Omit<NewDelivery, 'id'>[]): Promise<DeliveryRow[]> {
     if (rows.length === 0) return [];
     return this.database.db
+      .insert(deliveries)
+      .values(rows.map((row) => ({ ...row, id: newId('dlv') })))
+      .returning();
+  }
+
+  /** Fan-out insert inside the ingestion transaction (UnitOfWork). */
+  async insertManyTx(
+    tx: TransactionHandle,
+    rows: Omit<NewDelivery, 'id'>[],
+  ): Promise<DeliveryRow[]> {
+    if (rows.length === 0) return [];
+    return tx
       .insert(deliveries)
       .values(rows.map((row) => ({ ...row, id: newId('dlv') })))
       .returning();
@@ -112,6 +125,28 @@ export class DeliveriesRepository {
       .where(and(eq(deliveries.status, 'retrying'), lt(deliveries.nextAttemptAt, before)))
       .orderBy(asc(deliveries.nextAttemptAt))
       .limit(limit);
+  }
+
+  /** 24h attempt stats for an endpoint's health panel (API.md endpoints/health). */
+  async attemptStatsSince(
+    endpointId: string,
+    since: Date,
+  ): Promise<{ attempts: number; succeeded: number; p95Ms: number }> {
+    const [row] = await this.database.db
+      .select({
+        attempts: sql<number>`count(*)::int`,
+        succeeded: sql<number>`count(*) filter (where ${deliveryAttempts.outcome} = 'success')::int`,
+        p95Ms: sql<number>`coalesce(percentile_disc(0.95) within group (order by ${deliveryAttempts.durationMs}), 0)::int`,
+      })
+      .from(deliveryAttempts)
+      .where(
+        and(eq(deliveryAttempts.endpointId, endpointId), gte(deliveryAttempts.startedAt, since)),
+      );
+    return {
+      attempts: row?.attempts ?? 0,
+      succeeded: row?.succeeded ?? 0,
+      p95Ms: row?.p95Ms ?? 0,
+    };
   }
 
   async updateById(id: string, patch: Partial<NewDelivery>): Promise<DeliveryRow | null> {

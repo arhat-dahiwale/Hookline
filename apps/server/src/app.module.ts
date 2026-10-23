@@ -1,6 +1,7 @@
 import type { DynamicModule } from '@nestjs/common';
 
 import { AnalyticsModule } from './modules/analytics/index.js';
+import { ApiDocsModule } from './modules/api-docs/index.js';
 import { ApiKeysModule } from './modules/api-keys/index.js';
 import { AuditModule } from './modules/audit/index.js';
 import { AuthModule } from './modules/auth/index.js';
@@ -31,6 +32,7 @@ export class AppModule {
             EventsModule.forRoot(),
             DeliveriesModule.forRoot(),
             AnalyticsModule.forRoot(),
+            ApiDocsModule.forRoot(),
             HealthModule.forRoot(),
           ]
         : [];
