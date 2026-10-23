@@ -9,7 +9,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 | Phase | Name                          | Status |
 | ----- | ----------------------------- | ------ |
 | 0     | Repo foundation               | [x]    |
-| 1     | Local infra & server skeleton | [ ]    |
+| 1     | Local infra & server skeleton | [x]    |
 | 2     | Auth & multi-tenancy          | [ ]    |
 | 3     | Domain schema & API keys      | [ ]    |
 | 4     | Public REST API               | [ ]    |
@@ -49,17 +49,17 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 **Goal:** a running NestJS + Fastify server with config, logging, and health.
 **Exit criteria:** `GET /health/ready` returns 200 only when Postgres and Redis are reachable.
 
-- [ ] `docker-compose.dev.yml` with Postgres and Redis (healthchecks, named volumes, Redis AOF on)
-- [ ] Zod-validated config module (fail fast on invalid env)
-- [ ] NestJS bootstrap with Fastify adapter
-- [ ] `ROLE` switch (`api`, `worker`, `all`) controlling which modules load
-- [ ] Pino logger with request ID propagation
-- [ ] Standard error format and global exception filter
-- [ ] Health module: `/health/live`, `/health/ready`
-- [ ] Platform module: DB (Drizzle) and Redis client providers
-- [ ] Graceful shutdown hooks skeleton
-- [ ] Multi-stage Dockerfile for the server image
-- [ ] Unit tests for config and error filter
+- [x] `docker-compose.dev.yml` with Postgres and Redis (healthchecks, named volumes, Redis AOF on)
+- [x] Zod-validated config module (fail fast on invalid env)
+- [x] NestJS bootstrap with Fastify adapter
+- [x] `ROLE` switch (`api`, `worker`, `all`) controlling which modules load
+- [x] Pino logger with request ID propagation
+- [x] Standard error format and global error filter
+- [x] Health module: `/health/live`, `/health/ready`
+- [x] Platform module: DB (Drizzle) and Redis client providers
+- [x] Graceful shutdown hooks skeleton
+- [x] Multi-stage Dockerfile for the server image
+- [x] Unit tests for config and error filter
 
 ## Phase 2: Auth & multi-tenancy
 

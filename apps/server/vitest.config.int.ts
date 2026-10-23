@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 
+import swc from 'unplugin-swc';
 import { defineConfig } from 'vitest/config';
 
 /**
@@ -7,6 +8,9 @@ import { defineConfig } from 'vitest/config';
  * Containers are started once per run by the global setup.
  */
 export default defineConfig({
+  // SWC transform: emits the decorator metadata Nest DI needs (esbuild, the
+  // default Vite/Vitest transform, does not support emitDecoratorMetadata).
+  plugins: [swc.vite()],
   resolve: {
     alias: {
       '@hookline/shared': fileURLToPath(

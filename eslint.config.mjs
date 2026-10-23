@@ -67,10 +67,9 @@ export default tseslint.config(
   {
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/consistent-type-imports': [
-        'error',
-        { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
-      ],
+      // NOTE: consistent-type-imports is intentionally NOT enabled: NestJS DI
+      // relies on emitDecoratorMetadata, which requires constructor-injected
+      // services to stay value imports.
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
@@ -78,5 +77,19 @@ export default tseslint.config(
     },
   },
   ...moduleBoundaryRules,
+  {
+    // Node scripts (dev runners, codegen) run in plain Node, not TS.
+    files: ['**/scripts/**/*.mjs', '*.mjs'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+      },
+    },
+  },
   prettier,
 );
