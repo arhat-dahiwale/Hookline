@@ -6,44 +6,46 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 
 ## Progress overview
 
-| Phase | Name | Status |
-|---|---|---|
-| 0 | Repo foundation | [ ] |
-| 1 | Local infra & server skeleton | [ ] |
-| 2 | Auth & multi-tenancy | [ ] |
-| 3 | Domain schema & API keys | [ ] |
-| 4 | Public REST API | [ ] |
-| 5 | Delivery engine | [ ] |
-| 6 | Resilience | [ ] |
-| 7 | tRPC & dashboard foundation | [ ] |
-| 8 | Dashboard features | [ ] |
-| 9 | Real-time (WebSocket) | [ ] |
-| 10 | Internal gRPC | [ ] |
-| 11 | Analytics | [ ] |
-| 12 | Observability | [ ] |
-| 13 | Scale topology & chaos demo | [ ] |
-| 14 | Testing & CI/CD hardening | [ ] |
-| 15 | Docs, polish & launch | [ ] |
+| Phase | Name                          | Status |
+| ----- | ----------------------------- | ------ |
+| 0     | Repo foundation               | [x]    |
+| 1     | Local infra & server skeleton | [ ]    |
+| 2     | Auth & multi-tenancy          | [ ]    |
+| 3     | Domain schema & API keys      | [ ]    |
+| 4     | Public REST API               | [ ]    |
+| 5     | Delivery engine               | [ ]    |
+| 6     | Resilience                    | [ ]    |
+| 7     | tRPC & dashboard foundation   | [ ]    |
+| 8     | Dashboard features            | [ ]    |
+| 9     | Real-time (WebSocket)         | [ ]    |
+| 10    | Internal gRPC                 | [ ]    |
+| 11    | Analytics                     | [ ]    |
+| 12    | Observability                 | [ ]    |
+| 13    | Scale topology & chaos demo   | [ ]    |
+| 14    | Testing & CI/CD hardening     | [ ]    |
+| 15    | Docs, polish & launch         | [ ]    |
 
 > Tests are written **within each phase**. Phase 14 is for gaps, hardening, and CI polish, not for "adding tests later".
 
 ---
 
 ## Phase 0: Repo foundation
+
 **Goal:** a clean, buildable monorepo skeleton.
 **Exit criteria:** `pnpm install && pnpm build && pnpm lint && pnpm typecheck` all pass on an empty skeleton.
 
 - [x] Initialize git repo, `.gitignore`, `.editorconfig`, `.nvmrc`
 - [x] Add the eight root docs (README, PRD, PHASES, ARCHITECTURE, DATA, API, AGENTS, LOGS)
-- [ ] Set up pnpm workspace and Turborepo (`pnpm-workspace.yaml`, `turbo.json`)
-- [ ] Create skeletons: `apps/web`, `apps/server`, `packages/shared`, `packages/proto`, `packages/config`
-- [ ] Shared strict TypeScript base config
-- [ ] ESLint and Prettier configs, with import-boundary rules scaffolded
-- [ ] Husky + lint-staged + commitlint (Conventional Commits)
-- [ ] Root scripts: `dev`, `build`, `lint`, `typecheck`, `test`
-- [ ] `.env.example` with documented variables
+- [x] Set up pnpm workspace and Turborepo (`pnpm-workspace.yaml`, `turbo.json`)
+- [x] Create skeletons: `apps/web`, `apps/server`, `packages/shared`, `packages/proto`, `packages/config`
+- [x] Shared strict TypeScript base config
+- [x] ESLint and Prettier configs, with import-boundary rules scaffolded
+- [x] Husky + lint-staged + commitlint (Conventional Commits)
+- [x] Root scripts: `dev`, `build`, `lint`, `typecheck`, `test`
+- [x] `.env.example` with documented variables
 
 ## Phase 1: Local infra & server skeleton
+
 **Goal:** a running NestJS + Fastify server with config, logging, and health.
 **Exit criteria:** `GET /health/ready` returns 200 only when Postgres and Redis are reachable.
 
@@ -60,6 +62,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 - [ ] Unit tests for config and error filter
 
 ## Phase 2: Auth & multi-tenancy
+
 **Goal:** users can sign up, sign in, and work inside organizations.
 **Exit criteria:** two users in separate orgs cannot see each other's data (tested).
 
@@ -75,6 +78,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 - [ ] (Stretch) 2FA plugin
 
 ## Phase 3: Domain schema & API keys
+
 **Goal:** all core tables exist and API key auth works.
 **Exit criteria:** a request with a valid API key resolves its organization. Revoked or invalid keys are rejected.
 
@@ -90,6 +94,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 - [ ] Integration tests for API key lifecycle
 
 ## Phase 4: Public REST API
+
 **Goal:** the full public API from API.md section 1, documented via OpenAPI.
 **Exit criteria:** an integrator can create an endpoint and send an event, and the delivery rows exist (not yet delivered).
 
@@ -105,6 +110,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 - [ ] Integration and contract tests for every route
 
 ## Phase 5: Delivery engine
+
 **Goal:** deliveries are actually sent, signed, retried, and recorded.
 **Exit criteria:** an event sent via REST reaches a test receiver with a valid signature. Failures retry on schedule.
 
@@ -121,6 +127,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 - [ ] Integration tests with Testcontainers (Postgres + Redis) and the test receiver
 
 ## Phase 6: Resilience
+
 **Goal:** the system survives failures gracefully.
 **Exit criteria:** chaos test (kill worker mid-run) loses no deliveries, and a failing endpoint trips its breaker.
 
@@ -136,6 +143,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 - [ ] Tests: breaker transitions, reconciler, shutdown behavior, duplicate-job safety
 
 ## Phase 7: tRPC & dashboard foundation
+
 **Goal:** a logged-in dashboard shell with typed API access.
 **Exit criteria:** a user signs in, switches org, and sees a placeholder overview loaded via tRPC.
 
@@ -150,6 +158,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 - [ ] Tests for tRPC middleware and auth gating
 
 ## Phase 8: Dashboard features
+
 **Goal:** operators can do everything through the UI.
 **Exit criteria:** full endpoint, event, delivery, and key management without touching the API directly.
 
@@ -165,6 +174,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 - [ ] Component and E2E smoke tests (Playwright)
 
 ## Phase 9: Real-time (WebSocket)
+
 **Goal:** the live delivery log.
 **Exit criteria:** with 3 API replicas, a browser connected to any replica sees updates from deliveries executed by any worker.
 
@@ -181,6 +191,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 - [ ] Tests: multi-instance fan-out, auth failures, reconnect backfill
 
 ## Phase 10: Internal gRPC
+
 **Goal:** a real service boundary between API and worker roles.
 **Exit criteria:** with `ROLE=api` and `ROLE=worker` as separate containers, replay and test-endpoint work through gRPC.
 
@@ -195,6 +206,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 - [ ] Tests for each RPC (in-process and over the wire)
 
 ## Phase 11: Analytics
+
 **Goal:** useful charts and health summaries.
 **Exit criteria:** Overview page shows accurate volume, success rate, and latency matching the raw data.
 
@@ -208,6 +220,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 - [ ] Tests: rollup correctness, query accuracy
 
 ## Phase 12: Observability
+
 **Goal:** see inside the system.
 **Exit criteria:** one trace spans API request, queue, worker attempt, and outbound HTTP. Grafana dashboards load from provisioning.
 
@@ -222,6 +235,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 - [ ] Log correlation (`traceId`, `requestId` in every log line)
 
 ## Phase 13: Scale topology & chaos demo
+
 **Goal:** prove it scales and survives.
 **Exit criteria:** the demo script in README runs end to end with zero lost events.
 
@@ -235,6 +249,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 - [ ] Record results and screenshots for README
 
 ## Phase 14: Testing & CI/CD hardening
+
 **Goal:** confidence and automation.
 **Exit criteria:** CI is green on a fresh clone, and coverage on core modules meets the targets in AGENTS.md.
 
@@ -248,6 +263,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 - [ ] Flaky test triage
 
 ## Phase 15: Docs, polish & launch
+
 **Goal:** make it presentable.
 **Exit criteria:** a stranger can clone, run the demo, and understand the system in 15 minutes.
 

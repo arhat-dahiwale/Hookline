@@ -1,0 +1,11 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Native builds that are optional and unnecessary on Windows/Linux dev boxes:
+# ssh2 (a testcontainers transitive dep) falls back to pure JS without them.
+allowBuilds:
+  cpu-features: false
+  esbuild: true
+  protobufjs: true
+  ssh2: false

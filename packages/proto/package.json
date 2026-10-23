@@ -1,0 +1,6 @@
+{
+  "name": "@hookline/proto",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Protobuf definitions and generated code for Hookline internal gRPC (Phase 10)"
+}

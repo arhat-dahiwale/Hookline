@@ -1,0 +1,9 @@
+{
+  "extends": "@hookline/config/tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["src"]
+}

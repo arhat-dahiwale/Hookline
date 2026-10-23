@@ -1,0 +1,18 @@
+{
+  "name": "@hookline/server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hookline NestJS server (ROLE=api | worker | all)",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:int": "vitest run --config vitest.config.int.ts --passWithNoTests"
+  },
+  "devDependencies": {
+    "@hookline/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "testcontainers": "12.2.1"
+  }
+}

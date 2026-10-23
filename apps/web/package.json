@@ -1,0 +1,15 @@
+{
+  "name": "@hookline/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hookline dashboard (Next.js, added in Phase 7)",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@hookline/config": "workspace:*",
+    "@types/node": "24.19.2"
+  }
+}

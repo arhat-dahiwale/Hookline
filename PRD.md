@@ -35,11 +35,11 @@ Sending webhooks reliably is harder than it looks. Teams repeatedly rebuild the 
 
 ## 5. Personas
 
-| Persona | Description | Primary needs |
-|---|---|---|
-| **Integrator (developer)** | Backend developer at a SaaS company using the Hookline REST API | Simple ingestion API, clear docs, signature verification, idempotency |
-| **Operator (dashboard user)** | Engineer or support person who monitors deliveries | Live logs, search, failure inspection, replay |
-| **Org admin** | Manages organization, members, API keys | Roles, key management, audit trail |
+| Persona                       | Description                                                     | Primary needs                                                         |
+| ----------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------- |
+| **Integrator (developer)**    | Backend developer at a SaaS company using the Hookline REST API | Simple ingestion API, clear docs, signature verification, idempotency |
+| **Operator (dashboard user)** | Engineer or support person who monitors deliveries              | Live logs, search, failure inspection, replay                         |
+| **Org admin**                 | Manages organization, members, API keys                         | Roles, key management, audit trail                                    |
 
 ## 6. User stories
 
@@ -56,6 +56,7 @@ Sending webhooks reliably is harder than it looks. Teams repeatedly rebuild the 
 ## 7. Functional requirements
 
 ### 7.1 Authentication and tenancy
+
 - **FR-1** Users sign up and sign in with email and password (Better Auth). Optional 2FA is a stretch goal.
 - **FR-2** Resources belong to an organization. Users can belong to multiple organizations and switch the active one.
 - **FR-3** Roles: `owner`, `admin`, `member`. Role requirements per operation are in API.md.
@@ -63,6 +64,7 @@ Sending webhooks reliably is harder than it looks. Teams repeatedly rebuild the 
 - **FR-5** Every data query is scoped by `organization_id`. Cross-tenant access is impossible by construction.
 
 ### 7.2 Endpoints
+
 - **FR-6** Create, list, read, update, and soft-delete endpoints (URL, description, event-type filter, timeout, max attempts, outbound rate limit).
 - **FR-7** Each endpoint has a signing secret, shown on creation and rotation.
 - **FR-8** Secret rotation keeps the old secret valid for a configurable grace window (default 24h). During it, both signatures are sent.
@@ -71,6 +73,7 @@ Sending webhooks reliably is harder than it looks. Teams repeatedly rebuild the 
 - **FR-11** A test action sends a sample event synchronously and returns the result.
 
 ### 7.3 Event ingestion
+
 - **FR-12** `POST /v1/events` accepts `type` and `payload`, returns `202 Accepted`, and persists before acknowledging.
 - **FR-13** Fan-out: one delivery is created for each active endpoint whose filter matches the event type.
 - **FR-14** `Idempotency-Key` makes ingestion safe to retry. The same key and payload return the original result. The same key with a different payload is rejected.
@@ -78,6 +81,7 @@ Sending webhooks reliably is harder than it looks. Teams repeatedly rebuild the 
 - **FR-16** Ingestion is rate limited per API key.
 
 ### 7.4 Delivery engine
+
 - **FR-17** Each delivery is attempted by a worker with a per-endpoint timeout.
 - **FR-18** Success means any `2xx` response. Redirects are not followed and count as failure.
 - **FR-19** Failures (non-2xx, timeout, network or TLS error) retry on the schedule in ARCHITECTURE.md, with jitter, up to `max_attempts`.
@@ -90,10 +94,12 @@ Sending webhooks reliably is harder than it looks. Teams repeatedly rebuild the 
 - **FR-26** Graceful shutdown: in-flight deliveries finish or are safely returned to the queue.
 
 ### 7.5 Replay
+
 - **FR-27** Replay a single delivery (creates a new linked delivery).
 - **FR-28** Replay all events for an endpoint, or all `dead`/`failed` deliveries matching a filter (bulk).
 
 ### 7.6 Dashboard
+
 - **FR-29** Pages: Overview, Endpoints (list and detail), Events (list and detail), Deliveries (list and detail with attempt timeline), API Keys, Settings, Members.
 - **FR-30** The live log updates in real time over WebSocket, scoped to the active organization.
 - **FR-31** Filtering and searching by status, endpoint, event type, and time range. Cursor pagination.
@@ -101,6 +107,7 @@ Sending webhooks reliably is harder than it looks. Teams repeatedly rebuild the 
 - **FR-33** On WebSocket reconnect, the UI backfills missed updates.
 
 ### 7.7 Operations
+
 - **FR-34** Liveness and readiness endpoints.
 - **FR-35** Prometheus `/metrics`, OpenTelemetry traces across API, queue, and worker, and Grafana dashboards provisioned as code.
 - **FR-36** Scheduled maintenance jobs: stats rollups, retention cleanup, reconciler, secret-rotation expiry, circuit probes.
@@ -110,17 +117,17 @@ Sending webhooks reliably is harder than it looks. Teams repeatedly rebuild the 
 
 Targets are validated with k6 load tests in Phase 13/15.
 
-| Category | Requirement |
-|---|---|
-| **Durability** | No acknowledged event is lost on process crash, container kill, or deploy |
+| Category               | Requirement                                                                              |
+| ---------------------- | ---------------------------------------------------------------------------------------- |
+| **Durability**         | No acknowledged event is lost on process crash, container kill, or deploy                |
 | **Delivery semantics** | At-least-once. Duplicates are possible, so consumers dedupe using `Hookline-Delivery-Id` |
-| **Ingestion latency** | p99 under 100 ms server-side at 500 events/s per API replica |
-| **Dispatch lag** | p95 from ingestion to first attempt under 1 s at normal load |
-| **Scalability** | API and worker replicas scale independently. No instance holds unique state |
-| **Availability** | Rolling restarts with zero lost deliveries |
-| **Security** | See section 9 |
-| **Observability** | Every request and attempt is traceable by ID across API, queue, and worker |
-| **Maintainability** | Module boundaries enforced by lint rules. Docs updated alongside code |
+| **Ingestion latency**  | p99 under 100 ms server-side at 500 events/s per API replica                             |
+| **Dispatch lag**       | p95 from ingestion to first attempt under 1 s at normal load                             |
+| **Scalability**        | API and worker replicas scale independently. No instance holds unique state              |
+| **Availability**       | Rolling restarts with zero lost deliveries                                               |
+| **Security**           | See section 9                                                                            |
+| **Observability**      | Every request and attempt is traceable by ID across API, queue, and worker               |
+| **Maintainability**    | Module boundaries enforced by lint rules. Docs updated alongside code                    |
 
 ## 9. Security requirements
 
@@ -151,24 +158,24 @@ Targets are validated with k6 load tests in Phase 13/15.
 
 ## 12. Risks and mitigations
 
-| Risk | Mitigation |
-|---|---|
-| Event persisted but job never enqueued | Reconciler job re-enqueues stale `pending` deliveries |
+| Risk                                              | Mitigation                                                             |
+| ------------------------------------------------- | ---------------------------------------------------------------------- |
+| Event persisted but job never enqueued            | Reconciler job re-enqueues stale `pending` deliveries                  |
 | Duplicate deliveries from at-least-once semantics | Deterministic delivery IDs sent in headers, documented consumer dedupe |
-| SSRF via customer URLs | URL validation, DNS and IP checks at connect time, worker-only egress |
-| Retry storms against a failing endpoint | Circuit breaker, rate limits, jittered backoff |
-| Scope creep from three protocols | Thin protocol layers over shared services, strict phasing |
-| Redis loss | AOF persistence, reconciler, Postgres as source of truth |
-| WebSocket instability during deploys | Heartbeats, client backoff reconnect, backfill queries |
+| SSRF via customer URLs                            | URL validation, DNS and IP checks at connect time, worker-only egress  |
+| Retry storms against a failing endpoint           | Circuit breaker, rate limits, jittered backoff                         |
+| Scope creep from three protocols                  | Thin protocol layers over shared services, strict phasing              |
+| Redis loss                                        | AOF persistence, reconciler, Postgres as source of truth               |
+| WebSocket instability during deploys              | Heartbeats, client backoff reconnect, backfill queries                 |
 
 ## 13. Glossary
 
-| Term | Meaning |
-|---|---|
-| **Event** | A message the integrator sends (`type` + `payload`) |
-| **Endpoint** | A customer URL that receives events |
-| **Delivery** | One event to one endpoint, with lifecycle state |
-| **Attempt** | One HTTP request made for a delivery |
-| **Replay** | Creating a fresh delivery from an existing one |
-| **Dead** | A delivery that exhausted all attempts |
+| Term                | Meaning                                             |
+| ------------------- | --------------------------------------------------- |
+| **Event**           | A message the integrator sends (`type` + `payload`) |
+| **Endpoint**        | A customer URL that receives events                 |
+| **Delivery**        | One event to one endpoint, with lifecycle state     |
+| **Attempt**         | One HTTP request made for a delivery                |
+| **Replay**          | Creating a fresh delivery from an existing one      |
+| **Dead**            | A delivery that exhausted all attempts              |
 | **Circuit breaker** | Mechanism that pauses traffic to a failing endpoint |

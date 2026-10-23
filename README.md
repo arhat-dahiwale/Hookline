@@ -53,17 +53,17 @@ Hookline is a **modular monolith**: one codebase and one Docker image, started w
 
 ## Tech stack
 
-| Area | Technology |
-|---|---|
-| Frontend | Next.js, React, TypeScript, Tailwind CSS, shadcn/ui + Radix, TanStack Query, TanStack Table, Zustand, Motion, React Hook Form, Zod, Recharts |
-| Backend | Node.js, NestJS + Fastify adapter, TypeScript, Zod |
-| APIs | REST + OpenAPI (public), tRPC (dashboard), gRPC + Protobuf (internal), WebSocket (live updates) |
-| Data | PostgreSQL, Drizzle ORM, Redis |
-| Queue | BullMQ |
-| Auth | Better Auth (dashboard), custom hashed API keys (public API) |
-| Observability | Pino, OpenTelemetry, Prometheus, Grafana |
-| Infra | Docker, Docker Compose, nginx |
-| Tooling | pnpm workspaces, Turborepo, Vitest/Jest, Supertest, Testcontainers, GitHub Actions |
+| Area          | Technology                                                                                                                                   |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Frontend      | Next.js, React, TypeScript, Tailwind CSS, shadcn/ui + Radix, TanStack Query, TanStack Table, Zustand, Motion, React Hook Form, Zod, Recharts |
+| Backend       | Node.js, NestJS + Fastify adapter, TypeScript, Zod                                                                                           |
+| APIs          | REST + OpenAPI (public), tRPC (dashboard), gRPC + Protobuf (internal), WebSocket (live updates)                                              |
+| Data          | PostgreSQL, Drizzle ORM, Redis                                                                                                               |
+| Queue         | BullMQ                                                                                                                                       |
+| Auth          | Better Auth (dashboard), custom hashed API keys (public API)                                                                                 |
+| Observability | Pino, OpenTelemetry, Prometheus, Grafana                                                                                                     |
+| Infra         | Docker, Docker Compose, nginx                                                                                                                |
+| Tooling       | pnpm workspaces, Turborepo, Vitest/Jest, Supertest, Testcontainers, GitHub Actions                                                           |
 
 ## Repository structure
 
@@ -117,16 +117,16 @@ Then open the dashboard through nginx at `http://localhost:8080`, Grafana at `ht
 
 ## Common scripts
 
-| Command | Description |
-|---|---|
-| `pnpm dev` | Run web and server in watch mode |
-| `pnpm build` | Build all apps and packages |
-| `pnpm lint` / `pnpm typecheck` | Lint and type-check the repo |
-| `pnpm test` | Unit tests |
-| `pnpm test:int` | Integration tests (Testcontainers) |
-| `pnpm db:generate` / `pnpm db:migrate` | Generate and apply migrations |
-| `pnpm db:seed` | Seed demo data |
-| `pnpm proto:gen` | Generate gRPC code from `.proto` files |
+| Command                                | Description                            |
+| -------------------------------------- | -------------------------------------- |
+| `pnpm dev`                             | Run web and server in watch mode       |
+| `pnpm build`                           | Build all apps and packages            |
+| `pnpm lint` / `pnpm typecheck`         | Lint and type-check the repo           |
+| `pnpm test`                            | Unit tests                             |
+| `pnpm test:int`                        | Integration tests (Testcontainers)     |
+| `pnpm db:generate` / `pnpm db:migrate` | Generate and apply migrations          |
+| `pnpm db:seed`                         | Seed demo data                         |
+| `pnpm proto:gen`                       | Generate gRPC code from `.proto` files |
 
 ## Demo script (the "wow" moment)
 
@@ -139,15 +139,15 @@ Then open the dashboard through nginx at `http://localhost:8080`, Grafana at `ht
 
 ## Documentation
 
-| Doc | Purpose |
-|---|---|
-| [PRD.md](./PRD.md) | What we are building and why |
-| [PHASES.md](./PHASES.md) | Build plan with progress checkboxes |
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | How the system is designed |
-| [DATA.md](./DATA.md) | Database schema and Redis keys |
-| [API.md](./API.md) | REST, tRPC, gRPC, and WebSocket contracts |
-| [AGENTS.md](./AGENTS.md) | Rules for AI coding agents |
-| [LOGS.md](./LOGS.md) | Agent run log |
+| Doc                                  | Purpose                                   |
+| ------------------------------------ | ----------------------------------------- |
+| [PRD.md](./PRD.md)                   | What we are building and why              |
+| [PHASES.md](./PHASES.md)             | Build plan with progress checkboxes       |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | How the system is designed                |
+| [DATA.md](./DATA.md)                 | Database schema and Redis keys            |
+| [API.md](./API.md)                   | REST, tRPC, gRPC, and WebSocket contracts |
+| [AGENTS.md](./AGENTS.md)             | Rules for AI coding agents                |
+| [LOGS.md](./LOGS.md)                 | Agent run log                             |
 
 ## License
 

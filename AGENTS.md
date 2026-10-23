@@ -107,14 +107,14 @@ If a command doesn't exist yet in the current phase, say so in LOGS.md rather th
 
 Update docs **in the same change** as the code:
 
-| Change | Update |
-|---|---|
-| Route, tRPC procedure, gRPC RPC, WS message, error code | `API.md` |
-| Migration, table, column, index, enum, Redis key | `DATA.md` |
-| Module, flow, reliability behavior, config var, decision | `ARCHITECTURE.md` |
-| Scope or requirement change | `PRD.md` (and tell the human) |
-| Task done, task split, new task discovered | `PHASES.md` |
-| Setup steps, scripts, structure | `README.md` |
+| Change                                                   | Update                        |
+| -------------------------------------------------------- | ----------------------------- |
+| Route, tRPC procedure, gRPC RPC, WS message, error code  | `API.md`                      |
+| Migration, table, column, index, enum, Redis key         | `DATA.md`                     |
+| Module, flow, reliability behavior, config var, decision | `ARCHITECTURE.md`             |
+| Scope or requirement change                              | `PRD.md` (and tell the human) |
+| Task done, task split, new task discovered               | `PHASES.md`                   |
+| Setup steps, scripts, structure                          | `README.md`                   |
 
 ## 10. Logging your run in LOGS.md
 

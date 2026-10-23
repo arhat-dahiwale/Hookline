@@ -33,14 +33,15 @@ organization ─┬─< member >─ user
 
 ## 3. Enums
 
-| Enum | Values |
-|---|---|
-| `endpoint_status` | `active`, `disabled` |
+| Enum              | Values                                                                 |
+| ----------------- | ---------------------------------------------------------------------- |
+| `endpoint_status` | `active`, `disabled`                                                   |
 | `delivery_status` | `pending`, `in_progress`, `retrying`, `succeeded`, `dead`, `cancelled` |
-| `attempt_outcome` | `success`, `http_error`, `timeout`, `network_error`, `blocked` |
-| `breaker_state` | `closed`, `open`, `half_open` |
+| `attempt_outcome` | `success`, `http_error`, `timeout`, `network_error`, `blocked`         |
+| `breaker_state`   | `closed`, `open`, `half_open`                                          |
 
 **Delivery status meaning**
+
 - `pending`: created, no attempt has started
 - `in_progress`: an attempt is running
 - `retrying`: last attempt failed, the next is scheduled
@@ -57,92 +58,100 @@ Roles used: `owner`, `admin`, `member`.
 ## 5. Application tables
 
 ### 5.1 `api_keys`
-| Column | Type | Null | Notes |
-|---|---|---|---|
-| id | text | no | PK, `key_...` |
-| organization_id | text | no | FK to `organization.id`, on delete cascade |
-| name | text | no | Human label |
-| prefix | text | no | Unique. Non-secret lookup part of the key |
-| key_hash | text | no | SHA-256 of the full key |
-| scopes | text[] | no | Subset of: `events:write`, `events:read`, `endpoints:read`, `endpoints:write`, `deliveries:read`, `deliveries:write` |
-| created_by_user_id | text | no | FK to `user.id` |
-| last_used_at | timestamptz | yes | Updated at most once per minute |
-| expires_at | timestamptz | yes | |
-| revoked_at | timestamptz | yes | |
-| created_at | timestamptz | no | default now() |
+
+| Column             | Type        | Null | Notes                                                                                                                |
+| ------------------ | ----------- | ---- | -------------------------------------------------------------------------------------------------------------------- |
+| id                 | text        | no   | PK, `key_...`                                                                                                        |
+| organization_id    | text        | no   | FK to `organization.id`, on delete cascade                                                                           |
+| name               | text        | no   | Human label                                                                                                          |
+| prefix             | text        | no   | Unique. Non-secret lookup part of the key                                                                            |
+| key_hash           | text        | no   | SHA-256 of the full key                                                                                              |
+| scopes             | text[]      | no   | Subset of: `events:write`, `events:read`, `endpoints:read`, `endpoints:write`, `deliveries:read`, `deliveries:write` |
+| created_by_user_id | text        | no   | FK to `user.id`                                                                                                      |
+| last_used_at       | timestamptz | yes  | Updated at most once per minute                                                                                      |
+| expires_at         | timestamptz | yes  |                                                                                                                      |
+| revoked_at         | timestamptz | yes  |                                                                                                                      |
+| created_at         | timestamptz | no   | default now()                                                                                                        |
 
 Indexes: unique `(prefix)`, `(organization_id)`.
 Key format: `hl_live_{prefix}_{secret}` (the secret part is never stored).
 
 ### 5.2 `endpoints`
-| Column | Type | Null | Notes |
-|---|---|---|---|
-| id | text | no | PK, `end_...` |
-| organization_id | text | no | FK, cascade |
-| url | text | no | Validated (HTTPS, SSRF rules) |
-| description | text | yes | |
-| secret_encrypted | text | no | AES-256-GCM, key-ID prefixed |
-| previous_secret_encrypted | text | yes | Valid until the grace window ends |
-| previous_secret_expires_at | timestamptz | yes | |
-| status | endpoint_status | no | default `active` |
-| disabled_reason | text | yes | `manual` or `circuit_breaker` |
-| disabled_at | timestamptz | yes | |
-| event_types | text[] | no | default `{}`. Empty means all. Supports exact and `prefix.*` |
-| timeout_ms | integer | no | default 10000, range 1000 to 30000 |
-| max_attempts | integer | no | default 8, range 1 to 12 |
-| rate_limit_per_second | integer | no | default 10 |
-| metadata | jsonb | no | default `{}` |
-| created_at / updated_at | timestamptz | no | |
-| deleted_at | timestamptz | yes | Soft delete |
+
+| Column                     | Type            | Null | Notes                                                        |
+| -------------------------- | --------------- | ---- | ------------------------------------------------------------ |
+| id                         | text            | no   | PK, `end_...`                                                |
+| organization_id            | text            | no   | FK, cascade                                                  |
+| url                        | text            | no   | Validated (HTTPS, SSRF rules)                                |
+| description                | text            | yes  |                                                              |
+| secret_encrypted           | text            | no   | AES-256-GCM, key-ID prefixed                                 |
+| previous_secret_encrypted  | text            | yes  | Valid until the grace window ends                            |
+| previous_secret_expires_at | timestamptz     | yes  |                                                              |
+| status                     | endpoint_status | no   | default `active`                                             |
+| disabled_reason            | text            | yes  | `manual` or `circuit_breaker`                                |
+| disabled_at                | timestamptz     | yes  |                                                              |
+| event_types                | text[]          | no   | default `{}`. Empty means all. Supports exact and `prefix.*` |
+| timeout_ms                 | integer         | no   | default 10000, range 1000 to 30000                           |
+| max_attempts               | integer         | no   | default 8, range 1 to 12                                     |
+| rate_limit_per_second      | integer         | no   | default 10                                                   |
+| metadata                   | jsonb           | no   | default `{}`                                                 |
+| created_at / updated_at    | timestamptz     | no   |                                                              |
+| deleted_at                 | timestamptz     | yes  | Soft delete                                                  |
 
 Indexes: `(organization_id) where deleted_at is null`, `(organization_id, status)`.
 
 ### 5.3 `endpoint_health`
+
 Snapshot of breaker state. The live value is in Redis.
-| Column | Type | Null | Notes |
-|---|---|---|---|
-| endpoint_id | text | no | PK, FK to `endpoints.id`, cascade |
-| state | breaker_state | no | default `closed` |
-| consecutive_failures | integer | no | default 0 |
-| opened_at | timestamptz | yes | |
-| last_failure_at | timestamptz | yes | |
-| last_success_at | timestamptz | yes | |
-| last_probe_at | timestamptz | yes | |
-| updated_at | timestamptz | no | |
+
+| Column               | Type          | Null | Notes                             |
+| -------------------- | ------------- | ---- | --------------------------------- |
+| endpoint_id          | text          | no   | PK, FK to `endpoints.id`, cascade |
+| state                | breaker_state | no   | default `closed`                  |
+| consecutive_failures | integer       | no   | default 0                         |
+| opened_at            | timestamptz   | yes  |                                   |
+| last_failure_at      | timestamptz   | yes  |                                   |
+| last_success_at      | timestamptz   | yes  |                                   |
+| last_probe_at        | timestamptz   | yes  |                                   |
+| updated_at           | timestamptz   | no   |                                   |
 
 ### 5.4 `events`
-| Column | Type | Null | Notes |
-|---|---|---|---|
-| id | text | no | PK, `evt_...` |
-| organization_id | text | no | FK, cascade |
-| type | text | no | Format `^[a-z0-9_]+(\.[a-z0-9_]+)*$`, max 128 |
-| payload | jsonb | no | Max 256 KB |
-| payload_hash | text | no | SHA-256 of canonical payload (idempotency comparison) |
-| idempotency_key | text | yes | Max 255 |
-| created_at | timestamptz | no | default now() |
+
+| Column          | Type        | Null | Notes                                                 |
+| --------------- | ----------- | ---- | ----------------------------------------------------- |
+| id              | text        | no   | PK, `evt_...`                                         |
+| organization_id | text        | no   | FK, cascade                                           |
+| type            | text        | no   | Format `^[a-z0-9_]+(\.[a-z0-9_]+)*$`, max 128         |
+| payload         | jsonb       | no   | Max 256 KB                                            |
+| payload_hash    | text        | no   | SHA-256 of canonical payload (idempotency comparison) |
+| idempotency_key | text        | yes  | Max 255                                               |
+| created_at      | timestamptz | no   | default now()                                         |
 
 Indexes: unique `(organization_id, idempotency_key) where idempotency_key is not null`, `(organization_id, created_at desc, id desc)`, `(organization_id, type, created_at desc)`.
 
 ### 5.5 `deliveries`
+
 One event to one endpoint.
-| Column | Type | Null | Notes |
-|---|---|---|---|
-| id | text | no | PK, `dlv_...` |
-| organization_id | text | no | FK, cascade |
-| event_id | text | no | FK to `events.id`, cascade |
-| endpoint_id | text | no | FK to `endpoints.id` |
-| replay_of_delivery_id | text | yes | FK to `deliveries.id` |
-| status | delivery_status | no | default `pending` |
-| attempt_count | integer | no | default 0 |
-| max_attempts | integer | no | Copied from the endpoint at creation |
-| next_attempt_at | timestamptz | yes | Set while `retrying` |
-| last_attempt_at | timestamptz | yes | |
-| completed_at | timestamptz | yes | When `succeeded` or `dead` |
-| last_response_status | integer | yes | |
-| last_error | text | yes | |
-| created_at / updated_at | timestamptz | no | |
+
+| Column                  | Type            | Null | Notes                                |
+| ----------------------- | --------------- | ---- | ------------------------------------ |
+| id                      | text            | no   | PK, `dlv_...`                        |
+| organization_id         | text            | no   | FK, cascade                          |
+| event_id                | text            | no   | FK to `events.id`, cascade           |
+| endpoint_id             | text            | no   | FK to `endpoints.id`                 |
+| replay_of_delivery_id   | text            | yes  | FK to `deliveries.id`                |
+| status                  | delivery_status | no   | default `pending`                    |
+| attempt_count           | integer         | no   | default 0                            |
+| max_attempts            | integer         | no   | Copied from the endpoint at creation |
+| next_attempt_at         | timestamptz     | yes  | Set while `retrying`                 |
+| last_attempt_at         | timestamptz     | yes  |                                      |
+| completed_at            | timestamptz     | yes  | When `succeeded` or `dead`           |
+| last_response_status    | integer         | yes  |                                      |
+| last_error              | text            | yes  |                                      |
+| created_at / updated_at | timestamptz     | no   |                                      |
 
 Indexes:
+
 - unique `(event_id, endpoint_id) where replay_of_delivery_id is null` (fan-out idempotency)
 - `(organization_id, created_at desc, id desc)`
 - `(endpoint_id, created_at desc)`
@@ -151,55 +160,59 @@ Indexes:
 - partial `(next_attempt_at) where status = 'retrying'` (reconciler)
 
 ### 5.6 `delivery_attempts`
-| Column | Type | Null | Notes |
-|---|---|---|---|
-| id | text | no | PK, `att_...` |
-| delivery_id | text | no | FK, cascade |
-| organization_id | text | no | Denormalized for scoping |
-| endpoint_id | text | no | Denormalized for per-endpoint queries |
-| attempt_number | integer | no | 1-based |
-| outcome | attempt_outcome | no | |
-| request_headers | jsonb | no | Headers actually sent |
-| response_status | integer | yes | |
-| response_headers | jsonb | yes | |
-| response_body_snippet | text | yes | First 4 KB |
-| error_message | text | yes | |
-| duration_ms | integer | yes | |
-| started_at | timestamptz | no | |
-| finished_at | timestamptz | yes | |
+
+| Column                | Type            | Null | Notes                                 |
+| --------------------- | --------------- | ---- | ------------------------------------- |
+| id                    | text            | no   | PK, `att_...`                         |
+| delivery_id           | text            | no   | FK, cascade                           |
+| organization_id       | text            | no   | Denormalized for scoping              |
+| endpoint_id           | text            | no   | Denormalized for per-endpoint queries |
+| attempt_number        | integer         | no   | 1-based                               |
+| outcome               | attempt_outcome | no   |                                       |
+| request_headers       | jsonb           | no   | Headers actually sent                 |
+| response_status       | integer         | yes  |                                       |
+| response_headers      | jsonb           | yes  |                                       |
+| response_body_snippet | text            | yes  | First 4 KB                            |
+| error_message         | text            | yes  |                                       |
+| duration_ms           | integer         | yes  |                                       |
+| started_at            | timestamptz     | no   |                                       |
+| finished_at           | timestamptz     | yes  |                                       |
 
 Indexes: unique `(delivery_id, attempt_number)`, `(organization_id, started_at desc)`, `(endpoint_id, started_at desc)`.
 
 ### 5.7 `audit_logs`
-| Column | Type | Null | Notes |
-|---|---|---|---|
-| id | text | no | PK, `aud_...` |
-| organization_id | text | no | |
-| actor_type | text | no | `user`, `api_key`, `system` |
-| actor_id | text | yes | |
-| action | text | no | e.g. `endpoint.secret_rotated`, `api_key.revoked`, `endpoint.auto_disabled` |
-| target_type | text | yes | |
-| target_id | text | yes | |
-| metadata | jsonb | no | default `{}`. Never contains secrets |
-| created_at | timestamptz | no | |
+
+| Column          | Type        | Null | Notes                                                                       |
+| --------------- | ----------- | ---- | --------------------------------------------------------------------------- |
+| id              | text        | no   | PK, `aud_...`                                                               |
+| organization_id | text        | no   |                                                                             |
+| actor_type      | text        | no   | `user`, `api_key`, `system`                                                 |
+| actor_id        | text        | yes  |                                                                             |
+| action          | text        | no   | e.g. `endpoint.secret_rotated`, `api_key.revoked`, `endpoint.auto_disabled` |
+| target_type     | text        | yes  |                                                                             |
+| target_id       | text        | yes  |                                                                             |
+| metadata        | jsonb       | no   | default `{}`. Never contains secrets                                        |
+| created_at      | timestamptz | no   |                                                                             |
 
 Index: `(organization_id, created_at desc)`.
 
 ### 5.8 `delivery_stats_hourly`
+
 Rolled up by a maintenance job.
-| Column | Type | Null | Notes |
-|---|---|---|---|
-| organization_id | text | no | PK part |
-| endpoint_id | text | no | PK part |
-| bucket_start | timestamptz | no | PK part, truncated to the hour |
-| attempts_total | integer | no | |
-| attempts_succeeded | integer | no | |
-| attempts_failed | integer | no | |
-| deliveries_dead | integer | no | |
-| latency_p50_ms | integer | yes | |
-| latency_p95_ms | integer | yes | |
-| latency_p99_ms | integer | yes | |
-| updated_at | timestamptz | no | |
+
+| Column             | Type        | Null | Notes                          |
+| ------------------ | ----------- | ---- | ------------------------------ |
+| organization_id    | text        | no   | PK part                        |
+| endpoint_id        | text        | no   | PK part                        |
+| bucket_start       | timestamptz | no   | PK part, truncated to the hour |
+| attempts_total     | integer     | no   |                                |
+| attempts_succeeded | integer     | no   |                                |
+| attempts_failed    | integer     | no   |                                |
+| deliveries_dead    | integer     | no   |                                |
+| latency_p50_ms     | integer     | yes  |                                |
+| latency_p95_ms     | integer     | yes  |                                |
+| latency_p99_ms     | integer     | yes  |                                |
+| updated_at         | timestamptz | no   |                                |
 
 Indexes: PK `(organization_id, endpoint_id, bucket_start)`, `(bucket_start)`.
 
@@ -214,17 +227,17 @@ Indexes: PK `(organization_id, endpoint_id, bucket_start)`, `(bucket_start)`.
 
 All keys use the prefix `hl:`. BullMQ uses `hl:bull` as its prefix.
 
-| Key | Type | TTL | Purpose |
-|---|---|---|---|
-| `hl:bull:*` | BullMQ | n/a | Queues: `delivery`, `maintenance` |
-| `hl:rl:ingest:{apiKeyId}` | token bucket (hash) | idle expiry | Ingestion rate limit |
-| `hl:rl:endpoint:{endpointId}` | token bucket (hash) | idle expiry | Outbound rate limit |
-| `hl:cb:{endpointId}` | hash | none | Breaker state, counters, `openedAt`, cool-down |
-| `hl:cb:window:{endpointId}` | list (capped) | 1 h | Recent attempt outcomes (last 20) |
-| `hl:idem:{orgId}:{key}` | string | 24 h | Maps to the event ID and payload hash (fast path) |
-| `hl:apikey:{prefix}` | hash | 60 s | Cached key lookup (org, scopes, hash, revoked) |
-| `hl:org:{orgId}` | pub/sub channel | n/a | Real-time updates for an organization |
-| `hl:lock:{name}` | string | short | Distributed locks for maintenance tasks |
+| Key                           | Type                | TTL         | Purpose                                           |
+| ----------------------------- | ------------------- | ----------- | ------------------------------------------------- |
+| `hl:bull:*`                   | BullMQ              | n/a         | Queues: `delivery`, `maintenance`                 |
+| `hl:rl:ingest:{apiKeyId}`     | token bucket (hash) | idle expiry | Ingestion rate limit                              |
+| `hl:rl:endpoint:{endpointId}` | token bucket (hash) | idle expiry | Outbound rate limit                               |
+| `hl:cb:{endpointId}`          | hash                | none        | Breaker state, counters, `openedAt`, cool-down    |
+| `hl:cb:window:{endpointId}`   | list (capped)       | 1 h         | Recent attempt outcomes (last 20)                 |
+| `hl:idem:{orgId}:{key}`       | string              | 24 h        | Maps to the event ID and payload hash (fast path) |
+| `hl:apikey:{prefix}`          | hash                | 60 s        | Cached key lookup (org, scopes, hash, revoked)    |
+| `hl:org:{orgId}`              | pub/sub channel     | n/a         | Real-time updates for an organization             |
+| `hl:lock:{name}`              | string              | short       | Distributed locks for maintenance tasks           |
 
 Rules: Redis state is either reconstructable from Postgres or safe to lose. Never store the only copy of anything durable in Redis.
 
