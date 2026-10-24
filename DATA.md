@@ -227,17 +227,18 @@ Indexes: PK `(organization_id, endpoint_id, bucket_start)`, `(bucket_start)`.
 
 All keys use the prefix `hl:`. BullMQ uses `hl:bull` as its prefix.
 
-| Key                           | Type                | TTL         | Purpose                                           |
-| ----------------------------- | ------------------- | ----------- | ------------------------------------------------- |
-| `hl:bull:*`                   | BullMQ              | n/a         | Queues: `delivery`, `maintenance`                 |
-| `hl:rl:ingest:{apiKeyId}`     | token bucket (hash) | idle expiry | Ingestion rate limit                              |
-| `hl:rl:endpoint:{endpointId}` | token bucket (hash) | idle expiry | Outbound rate limit                               |
-| `hl:cb:{endpointId}`          | hash                | none        | Breaker state, counters, `openedAt`, cool-down    |
-| `hl:cb:window:{endpointId}`   | list (capped)       | 1 h         | Recent attempt outcomes (last 20)                 |
-| `hl:idem:{orgId}:{key}`       | string              | 24 h        | Maps to the event ID and payload hash (fast path) |
-| `hl:apikey:{prefix}`          | hash                | 60 s        | Cached key lookup (org, scopes, hash, revoked)    |
-| `hl:org:{orgId}`              | pub/sub channel     | n/a         | Real-time updates for an organization             |
-| `hl:lock:{name}`              | string              | short       | Distributed locks for maintenance tasks           |
+| Key                           | Type                | TTL         | Purpose                                             |
+| ----------------------------- | ------------------- | ----------- | --------------------------------------------------- |
+| `hl:bull:*`                   | BullMQ              | n/a         | Queues: `delivery`, `maintenance`                   |
+| `hl:rl:ingest:{apiKeyId}`     | token bucket (hash) | idle expiry | Ingestion rate limit                                |
+| `hl:rl:endpoint:{endpointId}` | token bucket (hash) | idle expiry | Outbound rate limit                                 |
+| `hl:cb:{endpointId}`          | hash                | none        | Breaker state, counters, `openedAt`, cool-down      |
+| `hl:cb:window:{endpointId}`   | list (capped)       | 1 h         | Recent attempt outcomes (last 20)                   |
+| `hl:cb:{id}:probe-lease`      | string              | 30 s        | Half-open probe lease (exactly one probe at a time) |
+| `hl:idem:{orgId}:{key}`       | string              | 24 h        | Maps to the event ID and payload hash (fast path)   |
+| `hl:apikey:{prefix}`          | hash                | 60 s        | Cached key lookup (org, scopes, hash, revoked)      |
+| `hl:org:{orgId}`              | pub/sub channel     | n/a         | Real-time updates for an organization               |
+| `hl:lock:{name}`              | string              | short       | Distributed locks for maintenance tasks             |
 
 Rules: Redis state is either reconstructable from Postgres or safe to lose. Never store the only copy of anything durable in Redis.
 

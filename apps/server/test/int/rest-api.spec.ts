@@ -486,33 +486,27 @@ describe('rate limiting', () => {
       createdByUserId: 'u',
     });
     const guardKey = 'hl:rl:ingest:' + exhausted.key.id;
-    for (let i = 0; i < INGESTION_BURST_CAPACITY + 2; i += 1) {
-      await limiter.take(guardKey, {
-        ratePerSecond: INGESTION_RATE_PER_SECOND,
-        capacity: INGESTION_BURST_CAPACITY,
-      });
-    }
-    // Refill is 50/s, so a burst right after draining must hit 429.
-    let blockedStatus: number | null = null;
-    let blockedHeaders: Record<string, unknown> = {};
-    let blockedBody: { error?: { code?: string } } = {};
-    for (let i = 0; i < 15 && blockedStatus !== 429; i += 1) {
-      const attempt = await test.instance.inject({
-        method: 'POST',
-        url: '/v1/events',
-        payload: JSON.stringify({ type: 'blocked.event', payload: {} }),
-        headers: {
-          authorization: 'Bearer ' + exhausted.secret,
-          'content-type': 'application/json',
-        },
-      });
-      if (attempt.statusCode === 429) {
-        blockedStatus = attempt.statusCode;
-        blockedHeaders = attempt.headers;
-        blockedBody = attempt.json();
-      }
-    }
-    expect(blockedStatus).toBe(429);
+    // Seed a large deficit directly (the same pattern as the breaker tests):
+    // denied takes never subtract, so no sequence of public takes holds the
+    // bucket below zero under load. -900 tokens = ~18s before the guard's
+    // take can succeed, far longer than this test runs.
+    await redis.client.hset(guardKey, {
+      tokens: '-900',
+      ts: String(Date.now()),
+    });
+    // With the bucket in deficit, the very next request must hit 429.
+    const attempt = await test.instance.inject({
+      method: 'POST',
+      url: '/v1/events',
+      payload: JSON.stringify({ type: 'blocked.event', payload: {} }),
+      headers: {
+        authorization: 'Bearer ' + exhausted.secret,
+        'content-type': 'application/json',
+      },
+    });
+    const blockedHeaders: Record<string, unknown> = attempt.headers;
+    const blockedBody = attempt.json() as { error?: { code?: string } };
+    expect(attempt.statusCode).toBe(429);
     expect(blockedBody.error?.code).toBe('rate_limited');
     expect(Number(blockedHeaders['retry-after'])).toBeGreaterThan(0);
   });

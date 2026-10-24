@@ -436,3 +436,50 @@ Append-only. **After every run**, add a new entry at the **bottom** using the te
 ### Next steps
 
 - Final: re-verify everything on main (lint/typecheck/test/test:int/build), live /health/ready against dev compose, AUTONOMOUS RUN SUMMARY
+
+---
+
+## Run 008: 2026-10-25 07:35 (+05:30)
+
+- **Agent / tool:** zcode, GLM-5.3
+- **Phase / task:** Step 1 wrap-up of Phases 0-6 (continuation run): verify main, fix flaky test, run summary
+- **Status:** completed
+
+### What I did
+
+- Oriented: `main` is clean at `a0d022c` (feat: replay and test-endpoint routes); all Phase 0-6 branches already merged `--no-ff` into `main` (verified via git log: phases 2-6 merge commits present); nothing to merge
+- Confirmed `--passWithNoTests` is gone from all scripts (grep over repo: no matches); `test:int` runs `vitest run --config vitest.config.int.ts` unconditionally
+- **Fixed a flaky integration test** (`rest-api.spec.ts > rate limits ingestion per API key with headers`): it drained the token bucket via 102 rapid `take()`s then expected the next HTTP ingest to be 429 — but a denied take never subtracts and refill is 50/s, so under parallel vitest load the gap between the drain loop and the guard's eval exceeded 20 ms, the token refilled, and the request passed with 202 (observed: `expected null to be 429` in full-suite runs, pass in isolation). Fix: seed the bucket directly with `HSET hl:rl:ingest:{keyId} tokens=-900 ts=now` (the established breaker-test pattern), giving ~18 s before the guard's take can succeed; the 429 is now asserted on the very next request. An intermediate attempt (single `take()` with `requested = capacity*10` through the public API) does NOT work — the Lua script only subtracts `requested` when allowed, so an oversized request leaves the bucket full; kept as a lesson here
+- Verified `/health/ready` and `/health/live` return 200 against the dev compose (server booted with ROLE=all on a temp port 4700 from `dist/main.js`, killed afterwards)
+- Docs drift found and fixed: the `hl:cb:{id}:probe-lease` Redis key (implemented in Phase 6 `breaker.ts`) was not in DATA.md's Redis key table — added
+- Verified PHASES.md checkboxes/table match reality (Phases 0-6 `[x]`, table marked)
+
+### Files changed
+
+- `apps/server/test/int/rest-api.spec.ts`: deterministic 429 via seeded bucket deficit; single request instead of a 15-try loop
+- `DATA.md`: added `hl:cb:{id}:probe-lease` key row
+
+### Decisions made
+
+- Test seeds Redis state directly instead of racing the refill — matches the Phase 6 decision ("cooldown/backdating in tests manipulates Redis directly"); the bucket-denial behavior itself remains covered by the deterministic `test-bucket` loop assertions in the same test
+
+### Commands run and results
+
+- `pnpm lint`: pass
+- `pnpm typecheck`: pass (4/4 turbo tasks)
+- `pnpm test`: pass (33 unit tests, 8 files, real run not cache)
+- `pnpm test:int`: pass 53/53 twice consecutively after the fix (previously 52/53 flaky)
+- `pnpm build`: pass (3/3 turbo tasks)
+- `GET /health/ready`: 200 `{"status":"ok"}`; `/health/live`: 200 (dev compose PG+Redis healthy)
+
+### Docs updated
+
+- DATA.md (probe-lease key)
+
+### Issues, risks, open questions
+
+- Unit test count is 33 files-vs-45 in run 006/007 notes — earlier entries likely counted spec assertions differently; current real number is 33 unit + 53 integration = 86 tests. No action needed.
+
+### Next steps
+
+- Phase 7: tRPC & dashboard foundation (tRPC on the Fastify instance, context + role middleware, Next.js shell, Better Auth client, TanStack Query, Zustand, shared schemas, route protection, tests)
