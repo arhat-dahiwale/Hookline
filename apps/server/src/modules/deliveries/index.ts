@@ -1,4 +1,5 @@
 export { DeliveriesModule } from './deliveries.module.js';
+export { DeliveriesService } from './deliveries.service.js';
 export {
   DeliveriesRepository,
   type DeliveryRow,

@@ -179,6 +179,53 @@ export class EventsService {
     return this.eventsRepository.list(scope, filters, limit, cursor ? decodeCursor(cursor) : null);
   }
 
+  /** Replay an event to all matching (or given) endpoints (FR-28). */
+  async replayEvent(
+    scope: TenantScope,
+    eventId: string,
+    endpointIds?: string[],
+  ): Promise<DeliveryRow[]> {
+    const event = await this.eventsRepository.findById(scope, eventId);
+    if (!event) throw notFound('event not found');
+    const active = await this.endpointsRepository.listActive(scope);
+    const matches = active.filter(
+      (endpoint) =>
+        (!endpointIds || endpointIds.includes(endpoint.id)) &&
+        (endpoint.eventTypes.length === 0 ||
+          endpoint.eventTypes.some(
+            (pattern) =>
+              pattern === event.type ||
+              (pattern.endsWith('.*') && event.type.startsWith(pattern.slice(0, -1))),
+          )),
+    );
+    if (matches.length === 0) throw notFound('no matching endpoints');
+
+    // Link replays to the original delivery for the endpoint: the partial
+    // unique (event_id, endpoint_id) index only applies to non-replays.
+    const existing = await this.deliveriesRepository.listForEvent(scope, event.id);
+    const originalByEndpoint = new Map(existing.map((row) => [row.endpointId, row.id]));
+
+    const created = await this.deliveriesRepository.insertMany(
+      matches.map((endpoint) => ({
+        organizationId: scope.organizationId,
+        eventId: event.id,
+        endpointId: endpoint.id,
+        replayOfDeliveryId: originalByEndpoint.get(endpoint.id) ?? null,
+        maxAttempts: endpoint.maxAttempts,
+        status: 'pending' as const,
+      })),
+    );
+    for (const delivery of created) {
+      await this.deliveryQueue.enqueueAttempt({
+        id: delivery.id,
+        organizationId: delivery.organizationId,
+        attemptCount: 0,
+        status: 'pending',
+      });
+    }
+    return created;
+  }
+
   private idemKey(organizationId: string, idempotencyKey: string): string {
     return `hl:idem:${organizationId}:${idempotencyKey}`;
   }

@@ -335,6 +335,80 @@ registry.registerPath({
   },
 });
 
+registry.registerPath({
+  method: 'post',
+  path: '/v1/events/{eventId}/replay',
+  ...secured(),
+  summary: 'Replay an event to matching (or given) endpoints',
+  request: { params: z.object({ eventId: z.string() }) },
+  responses: {
+    '202': {
+      description: 'accepted',
+      content: {
+        'application/json': {
+          schema: z.object({
+            deliveries: z.array(
+              z.object({ id: z.string(), endpointId: z.string(), status: z.string() }),
+            ),
+          }),
+        },
+      },
+    },
+    '404': errorResponse('not found'),
+    ...standardResponses,
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/v1/endpoints/{endpointId}/test',
+  ...secured(),
+  summary: 'Send a sample event synchronously (worker role)',
+  request: { params: z.object({ endpointId: z.string() }) },
+  responses: {
+    '201': {
+      description: 'test result',
+      content: {
+        'application/json': {
+          schema: z.object({
+            outcome: z.string(),
+            responseStatus: z.number().nullable(),
+            durationMs: z.number(),
+            responseBodySnippet: z.string().nullable(),
+            error: z.string().nullable(),
+          }),
+        },
+      },
+    },
+    '404': errorResponse('not found'),
+    ...standardResponses,
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/v1/deliveries/{deliveryId}/replay',
+  ...secured(),
+  summary: 'Replay a delivery (creates a linked new delivery)',
+  request: { params: z.object({ deliveryId: z.string() }) },
+  responses: {
+    '202': {
+      description: 'accepted',
+      content: {
+        'application/json': {
+          schema: z.object({
+            id: z.string(),
+            replayOfDeliveryId: z.string().nullable(),
+            status: z.string(),
+          }),
+        },
+      },
+    },
+    '404': errorResponse('not found'),
+    ...standardResponses,
+  },
+});
+
 // --- deliveries -------------------------------------------------------------------
 
 registry.registerPath({

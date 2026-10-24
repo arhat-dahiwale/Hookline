@@ -6,7 +6,10 @@ import { EventsModule } from '../events/index.js';
 import { CircuitBreakerService } from './breaker.js';
 import { DeliveryProcessor } from './delivery-processor.js';
 import { DeliveryQueueModule } from '../delivery-queue/index.js';
+import { ApiKeysModule } from '../api-keys/index.js';
 import { DeliveryWorkerBootstrap } from './delivery-worker.bootstrap.js';
+import { WorkerOperations } from './test-endpoint.js';
+import { WorkerTestController } from './worker-test.controller.js';
 import { MaintenanceService } from './maintenance.js';
 
 let cachedModule: DynamicModule | undefined;
@@ -18,6 +21,7 @@ export class DeliveryEngineModule {
     cachedModule = {
       module: DeliveryEngineModule,
       imports: [
+        ApiKeysModule.forRoot(),
         DeliveryQueueModule.forRoot(),
         DeliveriesModule.forRoot(),
         EndpointsModule.forRoot(),
@@ -27,9 +31,11 @@ export class DeliveryEngineModule {
         DeliveryProcessor,
         CircuitBreakerService,
         MaintenanceService,
+        WorkerOperations,
         DeliveryWorkerBootstrap,
       ],
-      exports: [DeliveryProcessor, CircuitBreakerService, MaintenanceService],
+      controllers: [WorkerTestController],
+      exports: [DeliveryProcessor, CircuitBreakerService, MaintenanceService, WorkerOperations],
     };
     return cachedModule;
   }

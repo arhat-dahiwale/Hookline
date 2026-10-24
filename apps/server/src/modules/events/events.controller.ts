@@ -129,4 +129,26 @@ export class EventsController {
     const rows = await this.deliveriesRepository.listForEvent(scope, event.id);
     return { data: rows.map(presentDelivery), nextCursor: null };
   }
+
+  @Post(':eventId/replay')
+  @RequireScopes('deliveries:write')
+  @HttpCode(202)
+  async replay(
+    @Param('eventId') eventId: string,
+    @Body() body: unknown,
+    @Req() request: ApiKeyRequest,
+  ): Promise<unknown> {
+    const endpointIds =
+      typeof body === 'object' &&
+      body !== null &&
+      Array.isArray((body as { endpointIds?: unknown }).endpointIds)
+        ? (body as { endpointIds: string[] }).endpointIds
+        : undefined;
+    const replays = await this.eventsService.replayEvent(
+      tenantScope(request.apiKeyContext!.organizationId),
+      eventId,
+      endpointIds,
+    );
+    return { deliveries: replays.map(presentDelivery) };
+  }
 }

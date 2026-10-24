@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { listDeliveriesQuerySchema } from '@hookline/shared';
 
 import { ApiKeyGuard, RequireScopes, type ApiKeyRequest } from '../api-keys/index.js';
@@ -9,6 +9,7 @@ import {
   type DeliveryAttemptRow,
   type DeliveryRow,
 } from './deliveries.repository.js';
+import { DeliveriesService } from './deliveries.service.js';
 import { encodeCursor } from '../platform/pagination.js';
 
 const DEFAULT_LIMIT = 50;
@@ -51,7 +52,10 @@ function presentAttempt(attempt: DeliveryAttemptRow) {
 @Controller('v1/deliveries')
 @UseGuards(ApiKeyGuard)
 export class DeliveriesController {
-  constructor(private readonly deliveriesRepository: DeliveriesRepository) {}
+  constructor(
+    private readonly deliveriesRepository: DeliveriesRepository,
+    private readonly deliveriesService: DeliveriesService,
+  ) {}
 
   @Get()
   @RequireScopes('deliveries:read')
@@ -105,6 +109,20 @@ export class DeliveriesController {
     if (!row) throw notFound('delivery not found');
     const attempts = await this.deliveriesRepository.findAttempts(row.id);
     return { data: attempts.map(presentAttempt), nextCursor: null };
+  }
+
+  @Post(':deliveryId/replay')
+  @RequireScopes('deliveries:write')
+  @HttpCode(202)
+  async replay(
+    @Param('deliveryId') deliveryId: string,
+    @Req() request: ApiKeyRequest,
+  ): Promise<unknown> {
+    const replayed = await this.deliveriesService.replayDelivery(
+      tenantScope(request.apiKeyContext!.organizationId),
+      deliveryId,
+    );
+    return presentDelivery(replayed);
   }
 }
 
