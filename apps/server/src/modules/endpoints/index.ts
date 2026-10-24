@@ -11,3 +11,4 @@ export {
   endpointStatusEnum,
   breakerStateEnum,
 } from './endpoints.schema.js';
+export { presentEndpoint } from './endpoints.presenter.js';

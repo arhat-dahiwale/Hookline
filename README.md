@@ -104,8 +104,16 @@ pnpm install
 cp .env.example .env            # then fill in secrets
 docker compose -f docker-compose.dev.yml up -d   # postgres + redis
 pnpm db:migrate
-pnpm dev                        # server on :4000 (web dashboard arrives in Phase 7)
+pnpm dev                        # API on :4000, dashboard on :3100
 ```
+
+Then open the dashboard at **http://localhost:3100**. The web app reaches the
+API through same-origin paths (`/trpc` and `/api/auth` are rewritten by
+Next.js to `API_ORIGIN`, default `http://localhost:4000`), so session cookies
+work without CORS. Port 3100 is used because 3000 is commonly taken; change
+it via the `dev` script in `apps/web/package.json` and keep
+`AUTH_TRUSTED_ORIGINS` in `.env` in sync (Better Auth rejects POSTs from
+untrusted origins).
 
 > Dev Postgres and Redis publish on host ports **15432** and **16379**
 > (`POSTGRES_PORT` / `REDIS_PORT` in `.env`) to avoid conflicts with native

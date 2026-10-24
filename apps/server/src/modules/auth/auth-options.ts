@@ -21,11 +21,15 @@ function buildAuthOptions(
     secret: string;
     baseURL: string;
     useSecureCookies: boolean;
+    trustedOrigins: string[];
   },
 ) {
   return {
     secret: env.secret,
     baseURL: env.baseURL,
+    // The dashboard lives on its own origin (web app in dev / nginx in
+    // production); its requests carry that Origin on POSTs.
+    trustedOrigins: env.trustedOrigins,
     database: drizzleAdapter(db, {
       provider: 'pg',
       schema: {
@@ -59,7 +63,7 @@ function buildAuthOptions(
  */
 export function createAuth(
   db: NodePgDatabase,
-  env: { secret: string; baseURL: string; useSecureCookies: boolean },
+  env: { secret: string; baseURL: string; useSecureCookies: boolean; trustedOrigins: string[] },
 ) {
   return betterAuth(buildAuthOptions(db, env));
 }

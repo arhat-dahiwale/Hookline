@@ -33,6 +33,7 @@ async function main(): Promise<void> {
     secret: config.BETTER_AUTH_SECRET,
     baseURL: config.BETTER_AUTH_URL,
     useSecureCookies: false,
+    trustedOrigins: config.AUTH_TRUSTED_ORIGINS.split(/\s+/).filter((o) => o !== ''),
   });
 
   const [alreadyThere] = await db.select().from(user).limit(1);

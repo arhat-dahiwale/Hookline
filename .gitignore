@@ -34,3 +34,6 @@ test-results/
 tmp/
 # integration test env (written by global setup)
 apps/server/test/int/.testenv.json
+
+# next.js generated
+apps/web/next-env.d.ts

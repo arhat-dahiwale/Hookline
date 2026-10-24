@@ -26,6 +26,7 @@ export class AuthService {
       secret: config.BETTER_AUTH_SECRET,
       baseURL: config.BETTER_AUTH_URL,
       useSecureCookies: config.NODE_ENV === 'production',
+      trustedOrigins: config.AUTH_TRUSTED_ORIGINS.split(/\s+/).filter((origin) => origin !== ''),
     });
   }
 

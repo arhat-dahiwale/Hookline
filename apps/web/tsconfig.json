@@ -1,9 +1,21 @@
 {
   "extends": "@hookline/config/tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": "src",
+    "target": "ES2022",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "preserve",
     "noEmit": true,
-    "types": ["node"]
+    "allowJs": false,
+    "incremental": true,
+    "types": ["node"],
+    "plugins": [{ "name": "next" }],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@hookline/server/trpc-router": ["../server/dist/trpc-router.d.ts"]
+    }
   },
-  "include": ["src"]
+  "include": ["src", "next.config.mjs", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
 }

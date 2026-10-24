@@ -12,6 +12,7 @@ import { EndpointsModule } from './modules/endpoints/index.js';
 import { EventsModule } from './modules/events/index.js';
 import { HealthModule } from './modules/health/index.js';
 import { PlatformModule } from './modules/platform/index.js';
+import { TrpcModule } from './modules/trpc/index.js';
 import type { AppConfig } from './modules/platform/index.js';
 
 export type Role = 'api' | 'worker' | 'all';
@@ -36,6 +37,7 @@ export class AppModule {
             AnalyticsModule.forRoot(),
             ApiDocsModule.forRoot(),
             HealthModule.forRoot(),
+            TrpcModule.forRoot(),
           ]
         : [];
     // The delivery engine (processor) runs only in worker/all roles.
