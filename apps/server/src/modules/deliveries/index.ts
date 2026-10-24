@@ -12,3 +12,4 @@ export {
   deliveryStatusEnum,
   attemptOutcomeEnum,
 } from './deliveries.schema.js';
+export { presentDelivery, presentAttempt } from './deliveries.presenter.js';

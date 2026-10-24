@@ -3,7 +3,17 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Menu, X } from 'lucide-react';
+import {
+  KeyRound,
+  LayoutDashboard,
+  Menu,
+  Send,
+  Settings,
+  Users,
+  Webhook,
+  X,
+  Zap,
+} from 'lucide-react';
 
 import { OrgSwitcher } from '@/components/org-switcher';
 import { ThemeToggle } from '@/components/theme-script';
@@ -12,6 +22,12 @@ import { cn } from '@/lib/utils';
 
 const NAV_ITEMS: { href: string; label: string; icon: React.ReactNode }[] = [
   { href: '/overview', label: 'Overview', icon: <LayoutDashboard aria-hidden /> },
+  { href: '/endpoints', label: 'Endpoints', icon: <Webhook aria-hidden /> },
+  { href: '/events', label: 'Events', icon: <Zap aria-hidden /> },
+  { href: '/deliveries', label: 'Deliveries', icon: <Send aria-hidden /> },
+  { href: '/api-keys', label: 'API keys', icon: <KeyRound aria-hidden /> },
+  { href: '/members', label: 'Members', icon: <Users aria-hidden /> },
+  { href: '/settings', label: 'Settings', icon: <Settings aria-hidden /> },
 ];
 
 /**

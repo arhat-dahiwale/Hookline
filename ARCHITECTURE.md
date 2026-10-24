@@ -69,6 +69,7 @@ Located in `apps/server/src/modules/`. Each module exposes a public service inte
 | `realtime`        | WebSocket gateway, Redis pub/sub bridge                                    | none                              | auth, platform                                         |
 | `analytics`       | Rollups, stats queries                                                     | `delivery_stats_hourly`           | platform (reads via own queries)                       |
 | `audit`           | Audit log writer and reader                                                | `audit_logs`                      | platform                                               |
+| `settings`        | Org-level preferences (retention override)                                 | `org_settings`                    | audit, platform                                        |
 | `trpc`            | tRPC protocol layer for the dashboard (context, role middleware, routers)  | none (uses services)              | auth, endpoints, deliveries, delivery-engine, platform |
 | `health`          | Liveness and readiness                                                     | none                              | platform                                               |
 | `platform`        | Config, logger, DB, Redis, telemetry, unit-of-work, errors                 | none                              | none                                                   |

@@ -22,6 +22,7 @@ export default defineConfig({
     './src/modules/deliveries/deliveries.schema.ts',
     './src/modules/audit/audit.schema.ts',
     './src/modules/analytics/analytics.schema.ts',
+    './src/modules/settings/settings.schema.ts',
   ],
   out: './drizzle',
   dbCredentials: { url },

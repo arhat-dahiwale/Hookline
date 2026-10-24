@@ -1,16 +1,9 @@
 import { index, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import { uniqueIndex } from 'drizzle-orm/pg-core';
 
-export const API_KEY_SCOPES = [
-  'events:write',
-  'events:read',
-  'endpoints:read',
-  'endpoints:write',
-  'deliveries:read',
-  'deliveries:write',
-] as const;
-
-export type ApiKeyScope = (typeof API_KEY_SCOPES)[number];
+// Single source of truth: the scope list lives in packages/shared so the
+// dashboard scope picker and the server guard never drift.
+export { API_KEY_SCOPES, type ApiKeyScope } from '@hookline/shared';
 
 export const apiKeys = pgTable(
   'api_keys',

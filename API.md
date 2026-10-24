@@ -244,7 +244,7 @@ Mounted at `/trpc`. Context contains `session`, `user`, and `activeOrganizationI
 
 Inputs and outputs are Zod schemas exported from `packages/shared`.
 
-> Phase status: the `endpoints` router is implemented (Phase 7). The remaining routers land with the phases that need them (events/deliveries/apiKeys: Phase 8, stats: Phase 11, audit/settings: Phase 8+).
+> Phase status: the `endpoints`, `events`, `deliveries`, `apiKeys`, `audit` and `settings` routers are implemented (Phases 7-8). `stats` lands with Phase 11.
 
 | Router       | Procedure           | Type           | Role | Description                                    |
 | ------------ | ------------------- | -------------- | ---- | ---------------------------------------------- |

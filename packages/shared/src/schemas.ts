@@ -72,3 +72,39 @@ export const testEndpointSchema = z.object({
   id: idSchema,
   eventType: eventTypeSchema.optional(),
 });
+
+export const replayDeliverySchema = z.object({
+  id: idSchema,
+});
+
+export const replayBulkSchema = z.object({
+  status: z.enum(['dead', 'succeeded', 'cancelled']).optional(),
+  endpointId: z.string().optional(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+});
+
+export const API_KEY_SCOPES = [
+  'events:write',
+  'events:read',
+  'endpoints:read',
+  'endpoints:write',
+  'deliveries:read',
+  'deliveries:write',
+] as const;
+
+export type ApiKeyScope = (typeof API_KEY_SCOPES)[number];
+
+export const apiKeyScopesSchema = z.enum(API_KEY_SCOPES);
+
+export const createApiKeySchema = z.object({
+  name: z.string().min(1).max(128),
+  scopes: z.array(apiKeyScopesSchema).min(1),
+  expiresAt: z.date().optional(),
+});
+
+export const updateOrgSettingsSchema = z
+  .object({
+    retentionDays: z.number().int().min(1).max(3650).nullable(),
+  })
+  .refine((value) => Object.keys(value).length > 0, { message: 'at least one field is required' });

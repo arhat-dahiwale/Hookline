@@ -28,7 +28,8 @@ organization ─┬─< member >─ user
               │            │         │
               │            │         └─< delivery_attempts
               ├─< audit_logs
-              └─< delivery_stats_hourly (per endpoint, per hour)
+              ├─< delivery_stats_hourly (per endpoint, per hour)
+              └─< org_settings
 ```
 
 ## 3. Enums
@@ -196,7 +197,15 @@ Indexes: unique `(delivery_id, attempt_number)`, `(organization_id, started_at d
 
 Index: `(organization_id, created_at desc)`.
 
-### 5.8 `delivery_stats_hourly`
+### 5.8 `org_settings`
+
+| Column          | Type        | Null | Notes                                    |
+| --------------- | ----------- | ---- | ---------------------------------------- |
+| organization_id | text        | no   | PK (one row per organization)            |
+| retention_days  | integer     | yes  | null = system default (`RETENTION_DAYS`) |
+| updated_at      | timestamptz | no   | default `now()`                          |
+
+### 5.9 `delivery_stats_hourly`
 
 Rolled up by a maintenance job.
 
