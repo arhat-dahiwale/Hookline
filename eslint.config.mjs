@@ -64,6 +64,8 @@ export default tseslint.config(
       '**/dist/**',
       '**/coverage/**',
       '**/.turbo/**',
+      '**/.next/**',
+      '**/next-env.d.ts',
       'packages/proto/generated/**',
     ],
   },
@@ -81,6 +83,15 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // TypeScript resolves globals via @types packages; the JS no-undef rule
+    // has no type information and false-positives on DOM/Node globals in the
+    // web app (typescript-eslint's own recommendation is to disable it).
+    files: ['**/*.ts', '**/*.tsx'],
+    rules: {
+      'no-undef': 'off',
+    },
+  },
   ...moduleBoundaryRules,
   {
     // Node scripts (dev runners, codegen) run in plain Node, not TS.
@@ -93,6 +104,15 @@ export default tseslint.config(
         clearTimeout: 'readonly',
         setInterval: 'readonly',
         clearInterval: 'readonly',
+      },
+    },
+  },
+  {
+    // Next.js config runs in the Next build context (Node globals available).
+    files: ['**/next.config.mjs'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
       },
     },
   },

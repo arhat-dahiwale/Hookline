@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, type OnApplicationShutdown } from '@nestjs/common';
+import { Injectable, Logger, type OnApplicationShutdown } from '@nestjs/common';
 import { Queue, Worker, type Job } from 'bullmq';
 
 import {
@@ -7,7 +7,6 @@ import {
   deliveryJobId,
   MAINTENANCE_QUEUE_NAME,
 } from '../delivery-queue/index.js';
-import { APP_CONFIG } from '../platform/config/app-config.js';
 import { RedisService } from '../platform/redis/redis.service.js';
 import { DeliveriesRepository } from '../deliveries/index.js';
 import { EndpointsRepository, EndpointsService } from '../endpoints/index.js';
@@ -40,7 +39,7 @@ export class MaintenanceService implements OnApplicationShutdown {
   private worker: Worker<MaintenanceJobData> | undefined;
 
   constructor(
-    @Inject(APP_CONFIG) private readonly redisService: RedisService,
+    private readonly redisService: RedisService,
     private readonly deliveriesRepository: DeliveriesRepository,
     private readonly endpointsRepository: EndpointsRepository,
     private readonly endpointsService: EndpointsService,
@@ -159,6 +158,17 @@ export class MaintenanceService implements OnApplicationShutdown {
       this.logger.warn(`auto-disabled endpoints (breaker open 24h): ${disabled.join(', ')}`);
     }
     return disabled;
+  }
+
+  /** Names of the registered BullMQ job schedulers (observability/tests). */
+  async getSchedulerNames(): Promise<string[]> {
+    if (!this.queue) return [];
+    const schedulers = await this.queue.getJobSchedulers();
+    return schedulers.map((scheduler) => scheduler.name);
+  }
+
+  async stop(): Promise<void> {
+    await this.onApplicationShutdown();
   }
 
   async onApplicationShutdown(): Promise<void> {

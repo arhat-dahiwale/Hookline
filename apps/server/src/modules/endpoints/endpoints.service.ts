@@ -81,6 +81,24 @@ export class EndpointsService {
     return this.repository.listAll(scope);
   }
 
+  async update(
+    scope: TenantScope,
+    id: string,
+    patch: {
+      url?: string;
+      description?: string | null;
+      eventTypes?: string[];
+      timeoutMs?: number;
+      maxAttempts?: number;
+      rateLimitPerSecond?: number;
+      metadata?: Record<string, unknown>;
+    },
+  ): Promise<EndpointRow> {
+    const updated = await this.repository.update(scope, id, patch);
+    if (!updated) throw notFound('endpoint not found');
+    return updated;
+  }
+
   async rotateSecret(
     scope: TenantScope,
     id: string,

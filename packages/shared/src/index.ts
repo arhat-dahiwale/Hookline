@@ -22,3 +22,4 @@ export {
   MAX_PAYLOAD_BYTES,
   IDEMPOTENCY_KEY_MAX,
 } from './schemas.js';
+export { idSchema, setEndpointStatusSchema, testEndpointSchema } from './schemas.js';

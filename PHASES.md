@@ -15,7 +15,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 | 4     | Public REST API               | [x]    |
 | 5     | Delivery engine               | [x]    |
 | 6     | Resilience                    | [x]    |
-| 7     | tRPC & dashboard foundation   | [ ]    |
+| 7     | tRPC & dashboard foundation   | [x]    |
 | 8     | Dashboard features            | [ ]    |
 | 9     | Real-time (WebSocket)         | [ ]    |
 | 10    | Internal gRPC                 | [ ]    |
@@ -147,15 +147,15 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 **Goal:** a logged-in dashboard shell with typed API access.
 **Exit criteria:** a user signs in, switches org, and sees a placeholder overview loaded via tRPC.
 
-- [ ] tRPC router mounted on the Fastify instance, reusing Nest services
-- [ ] tRPC context (session, active org) and role-checking middleware
-- [ ] Next.js app: layout, navigation, theming, shadcn/ui setup
-- [ ] Better Auth client, sign-in/up pages, org switcher
-- [ ] tRPC + TanStack Query client with error handling
-- [ ] Zustand store for UI state
-- [ ] Shared Zod schemas consumed from `packages/shared`
-- [ ] Route protection middleware
-- [ ] Tests for tRPC middleware and auth gating
+- [x] tRPC router mounted on the Fastify instance, reusing Nest services
+- [x] tRPC context (session, active org) and role-checking middleware
+- [x] Next.js app: layout, navigation, theming, shadcn/ui setup
+- [x] Better Auth client, sign-in/up pages, org switcher
+- [x] tRPC + TanStack Query client with error handling
+- [x] Zustand store for UI state
+- [x] Shared Zod schemas consumed from `packages/shared`
+- [x] Route protection middleware
+- [x] Tests for tRPC middleware and auth gating
 
 ## Phase 8: Dashboard features
 

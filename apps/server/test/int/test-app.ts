@@ -7,6 +7,7 @@ import { Test } from '@nestjs/testing';
 import { AppModule } from '../../src/app.module.js';
 import { registerApiDocsRoutes } from '../../src/modules/api-docs/index.js';
 import { registerBetterAuthRoutes } from '../../src/modules/auth/index.js';
+import { registerTrpcRoutes } from '../../src/modules/trpc/index.js';
 import { parseEnv } from '../../src/modules/platform/index.js';
 import { loadTestEnv } from './test-env.js';
 
@@ -34,6 +35,7 @@ export async function createTestApplication(
   });
   registerBetterAuthRoutes(app);
   registerApiDocsRoutes(app);
+  registerTrpcRoutes(app, config);
   await app.init();
   const instance = app.getHttpAdapter().getInstance() as FastifyInstance;
   return { app, instance };

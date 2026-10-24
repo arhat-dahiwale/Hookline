@@ -23,27 +23,11 @@ import {
 import { ApiKeyGuard, RequireScopes, type ApiKeyRequest } from '../api-keys/index.js';
 import { APP_CONFIG, type AppConfig } from '../platform/config/app-config.js';
 import { tenantScope } from '../platform/database/tenant-scope.js';
-import { endpointUrlBlocked, notFound } from '../platform/errors/app-error.js';
+import { endpointUrlBlocked } from '../platform/errors/app-error.js';
 import { DeliveriesRepository } from '../deliveries/index.js';
 import { EndpointsService } from './endpoints.service.js';
-import type { EndpointRow } from './endpoints.repository.js';
 import { EndpointsRepository } from './endpoints.repository.js';
-
-function presentEndpoint(endpoint: EndpointRow) {
-  return {
-    id: endpoint.id,
-    url: endpoint.url,
-    description: endpoint.description,
-    status: endpoint.status,
-    eventTypes: endpoint.eventTypes,
-    timeoutMs: endpoint.timeoutMs,
-    maxAttempts: endpoint.maxAttempts,
-    rateLimitPerSecond: endpoint.rateLimitPerSecond,
-    metadata: endpoint.metadata,
-    createdAt: endpoint.createdAt.toISOString(),
-    updatedAt: endpoint.updatedAt.toISOString(),
-  };
-}
+import { presentEndpoint } from './endpoints.presenter.js';
 
 function since24h(): Date {
   return new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -128,19 +112,21 @@ export class EndpointsController {
         throw endpointUrlBlocked(urlCheck.reason ?? 'URL not allowed');
       }
     }
-    const scope = tenantScope(request.apiKeyContext!.organizationId);
-    const updated = await this.endpointsRepository.update(scope, endpointId, {
-      ...(parsed.url !== undefined ? { url: parsed.url } : {}),
-      ...(parsed.description !== undefined ? { description: parsed.description } : {}),
-      ...(parsed.eventTypes !== undefined ? { eventTypes: parsed.eventTypes } : {}),
-      ...(parsed.timeoutMs !== undefined ? { timeoutMs: parsed.timeoutMs } : {}),
-      ...(parsed.maxAttempts !== undefined ? { maxAttempts: parsed.maxAttempts } : {}),
-      ...(parsed.rateLimitPerSecond !== undefined
-        ? { rateLimitPerSecond: parsed.rateLimitPerSecond }
-        : {}),
-      ...(parsed.metadata !== undefined ? { metadata: parsed.metadata } : {}),
-    });
-    if (!updated) throw notFound('endpoint not found');
+    const updated = await this.endpointsService.update(
+      tenantScope(request.apiKeyContext!.organizationId),
+      endpointId,
+      {
+        ...(parsed.url !== undefined ? { url: parsed.url } : {}),
+        ...(parsed.description !== undefined ? { description: parsed.description } : {}),
+        ...(parsed.eventTypes !== undefined ? { eventTypes: parsed.eventTypes } : {}),
+        ...(parsed.timeoutMs !== undefined ? { timeoutMs: parsed.timeoutMs } : {}),
+        ...(parsed.maxAttempts !== undefined ? { maxAttempts: parsed.maxAttempts } : {}),
+        ...(parsed.rateLimitPerSecond !== undefined
+          ? { rateLimitPerSecond: parsed.rateLimitPerSecond }
+          : {}),
+        ...(parsed.metadata !== undefined ? { metadata: parsed.metadata } : {}),
+      },
+    );
     return presentEndpoint(updated);
   }
 

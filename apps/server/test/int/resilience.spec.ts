@@ -213,6 +213,19 @@ describe('circuit breaker', () => {
   });
 });
 
+describe('maintenance schedulers', () => {
+  it('registers both job schedulers on start (single firing across replicas)', async () => {
+    const { maintenance } = await setup();
+    // Regression: a misapplied @Inject(APP_CONFIG) on the RedisService made
+    // start() throw at boot — silently, since the worker bootstrap swallows
+    // it — while the run* helpers kept the tests green.
+    await maintenance.start();
+    const schedulers = await maintenance.getSchedulerNames();
+    expect(schedulers.sort()).toEqual(['breaker-sweep', 'reconciler']);
+    await maintenance.stop();
+  });
+});
+
 describe('reconciler', () => {
   it('re-enqueues pending deliveries without live jobs (persisted but never enqueued)', async () => {
     const { orgId, maintenance } = await setup();

@@ -57,20 +57,21 @@ Scale each role independently. API load follows ingestion and dashboard traffic.
 
 Located in `apps/server/src/modules/`. Each module exposes a public service interface through its `index.ts`. **Other modules may import only from that file.** Boundaries are enforced with lint rules (`eslint-plugin-boundaries` or `dependency-cruiser`).
 
-| Module            | Responsibility                                                             | Owns tables                       | May depend on                                   |
-| ----------------- | -------------------------------------------------------------------------- | --------------------------------- | ----------------------------------------------- |
-| `auth`            | Better Auth wiring, session resolution, guards                             | Better Auth tables                | platform                                        |
-| `api-keys`        | Create, hash, verify, scope API keys                                       | `api_keys`                        | platform, audit                                 |
-| `endpoints`       | Endpoint CRUD, secrets, URL validation, health state                       | `endpoints`, `endpoint_health`    | platform, audit                                 |
-| `events`          | Ingestion, idempotency, fan-out orchestration                              | `events`                          | endpoints, deliveries, delivery-queue, platform |
-| `deliveries`      | Delivery lifecycle, attempts, replay logic                                 | `deliveries`, `delivery_attempts` | endpoints, platform                             |
-| `delivery-queue`  | BullMQ delivery queue (enqueue side), retry schedule and backoff           | none                              | platform                                        |
-| `delivery-engine` | BullMQ processors, signing, HTTP client, breaker, rate limiter, reconciler | none (uses services)              | delivery-queue, deliveries, endpoints, platform |
-| `realtime`        | WebSocket gateway, Redis pub/sub bridge                                    | none                              | auth, platform                                  |
-| `analytics`       | Rollups, stats queries                                                     | `delivery_stats_hourly`           | platform (reads via own queries)                |
-| `audit`           | Audit log writer and reader                                                | `audit_logs`                      | platform                                        |
-| `health`          | Liveness and readiness                                                     | none                              | platform                                        |
-| `platform`        | Config, logger, DB, Redis, telemetry, unit-of-work, errors                 | none                              | none                                            |
+| Module            | Responsibility                                                             | Owns tables                       | May depend on                                          |
+| ----------------- | -------------------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------ |
+| `auth`            | Better Auth wiring, session resolution, guards                             | Better Auth tables                | platform                                               |
+| `api-keys`        | Create, hash, verify, scope API keys                                       | `api_keys`                        | platform, audit                                        |
+| `endpoints`       | Endpoint CRUD, secrets, URL validation, health state                       | `endpoints`, `endpoint_health`    | platform, audit                                        |
+| `events`          | Ingestion, idempotency, fan-out orchestration                              | `events`                          | endpoints, deliveries, delivery-queue, platform        |
+| `deliveries`      | Delivery lifecycle, attempts, replay logic                                 | `deliveries`, `delivery_attempts` | endpoints, platform                                    |
+| `delivery-queue`  | BullMQ delivery queue (enqueue side), retry schedule and backoff           | none                              | platform                                               |
+| `delivery-engine` | BullMQ processors, signing, HTTP client, breaker, rate limiter, reconciler | none (uses services)              | delivery-queue, deliveries, endpoints, platform        |
+| `realtime`        | WebSocket gateway, Redis pub/sub bridge                                    | none                              | auth, platform                                         |
+| `analytics`       | Rollups, stats queries                                                     | `delivery_stats_hourly`           | platform (reads via own queries)                       |
+| `audit`           | Audit log writer and reader                                                | `audit_logs`                      | platform                                               |
+| `trpc`            | tRPC protocol layer for the dashboard (context, role middleware, routers)  | none (uses services)              | auth, endpoints, deliveries, delivery-engine, platform |
+| `health`          | Liveness and readiness                                                     | none                              | platform                                               |
+| `platform`        | Config, logger, DB, Redis, telemetry, unit-of-work, errors                 | none                              | none                                                   |
 
 **Rules**
 
@@ -277,6 +278,7 @@ All config is validated with Zod at startup. The app refuses to boot on invalid 
 | `DATABASE_URL`                          | Postgres                                                |
 | `REDIS_URL`                             | Redis                                                   |
 | `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` | Auth                                                    |
+| `AUTH_TRUSTED_ORIGINS`                  | Dashboard origins trusted for Better Auth CSRF checks   |
 | `ENCRYPTION_KEY`                        | AES-256-GCM key for endpoint secrets (32 bytes, base64) |
 | `INTERNAL_GRPC_TOKEN`                   | Shared token for API→worker gRPC                        |
 | `WORKER_GRPC_URL`                       | Address of the worker gRPC server                       |

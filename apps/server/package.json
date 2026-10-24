@@ -22,6 +22,7 @@
     "@nestjs/core": "12.2.0",
     "@nestjs/event-emitter": "12.0.1",
     "@nestjs/platform-fastify": "12.2.0",
+    "@trpc/server": "11.19.0",
     "better-auth": "1.7.12",
     "bullmq": "6.4.1",
     "dotenv": "18.0.9",

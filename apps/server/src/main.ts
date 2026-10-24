@@ -9,6 +9,7 @@ import { newId } from '@hookline/shared';
 import { AppModule, type Role } from './app.module.js';
 import { registerApiDocsRoutes } from './modules/api-docs/index.js';
 import { registerBetterAuthRoutes } from './modules/auth/index.js';
+import { registerTrpcRoutes } from './modules/trpc/index.js';
 import {
   loadAppConfig,
   PinoLoggerService,
@@ -80,6 +81,7 @@ async function bootstrapHttp(config: AppConfig, role: Role): Promise<void> {
   app.enableShutdownHooks();
   registerBetterAuthRoutes(app);
   registerApiDocsRoutes(app);
+  registerTrpcRoutes(app, config);
   await app.listen({ port: config.PORT, host: '0.0.0.0' });
   const logger = app.get(PinoLoggerService).child({ module: 'bootstrap' });
   logger.info({ role, port: config.PORT }, 'hookline http server listening');

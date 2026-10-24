@@ -483,3 +483,56 @@ Append-only. **After every run**, add a new entry at the **bottom** using the te
 ### Next steps
 
 - Phase 7: tRPC & dashboard foundation (tRPC on the Fastify instance, context + role middleware, Next.js shell, Better Auth client, TanStack Query, Zustand, shared schemas, route protection, tests)
+
+---
+
+## Run 009: 2026-10-25 05:05 (+05:30)
+
+- **Agent / tool:** zcode, GLM-5.3
+- **Phase / task:** Phase 7: tRPC & dashboard foundation (all tasks)
+- **Status:** completed
+
+### What I did
+
+- **Server:** new `trpc` module mounted at `/trpc` on the Fastify instance via the tRPC v11 fetch adapter (body re-serialized like Better Auth routes); context = Better Auth session (shared `resolveSession()`) + active-org role; `orgProcedure` + `minRole()` middleware enforce API.md section 3 (M/A/O); AppError→tRPC code mapping carries `hooklineCode` in `error.data` (never stacks). `endpoints` router fully implemented (list/get/create/update/delete/setStatus/rotateSecret/health/test) reusing EndpointsService + DeliveriesRepository + WorkerOperations (optional — `test` returns 503-unavailable when the worker role isn't loaded; gRPC adapter lands in Phase 10). `EndpointsService.update()` extracted from the controller so both protocol layers call the service; `presentEndpoint` shared by REST and tRPC
+- **Web:** Next.js 15.5.28 app in `apps/web` (App Router): root layout + shadcn/ui-style tokens (Tailwind v4, oklch, light/dark with pre-hydration theme script, system fonts — no network fonts), sign-in/sign-up pages (Better Auth react client), dashboard shell with sidebar + mobile drawer, org switcher (Better Auth organization plugin, dispatches `hookline:org-switched` so org-scoped queries refetch), overview placeholder page via tRPC `endpoints.list` with loading/empty/error states, Zustand `ui-store` (sidebar + future live-log pause), edge `middleware.ts` route protection (cookie check) plus server-side session re-check in the dashboard layout. `next.config.mjs` rewrites `/trpc/*` and `/api/auth/*` to `API_ORIGIN` (Phase 13 nginx topology)
+- **Type sharing:** server emits declarations (`declaration: true`); web maps `@hookline/server/trpc-router` to `../server/dist/trpc-router.d.ts` (type-only import) — avoids pulling server sources into the DOM-lib web program
+- **Env:** added `AUTH_TRUSTED_ORIGINS` (Better Auth CSRF trusted origins — the web origin MUST be listed or browser POSTs get 403), `WEB_PORT=3100`, `API_ORIGIN`; appended to `.env` without touching existing lines; documented in `.env.example`/README
+- **Found and fixed a pre-existing Phase 6 bug:** `MaintenanceService` had `@Inject(APP_CONFIG) redisService: RedisService` — Nest injected the CONFIG object as the Redis service, so maintenance schedulers NEVER registered in live boots (bootstrap swallowed the error; tests only called `runReconciler()`/`runBreakerSweep()` directly, so it stayed green). Fixed the decorator, added a regression test asserting `start()` registers both schedulers
+- **Fixed the flaky ingestion rate-limit 429 test** (Step 1): drain-by-`take()`-then-HTTP raced the 50/s refill under parallel load; now seeds `tokens=-900` directly (established breaker-test pattern), 429 asserted on the very next request. Note: an oversized public `take(requested=capacity*10)` does NOT work — the Lua only subtracts when allowed
+- ESLint: disabled `no-undef` for TS files (no type info; standard ts-eslint practice), ignored `.next`/`next-env.d.ts`, added `process` global for `next.config.mjs`
+
+### Files changed
+
+- `apps/server/src/modules/trpc/**` (new: trpc.ts, endpoints.router.ts, app-router.ts, trpc-context.factory.ts, trpc.routes.ts, trpc.module.ts, index.ts), `app.module.ts`, `main.ts`, `src/trpc-router.ts` (type entry), `tsconfig.build.json` (declarations)
+- `apps/server/src/modules/endpoints/{endpoints.service.ts,endpoints.controller.ts,endpoints.presenter.ts,index.ts}`; `delivery-engine/maintenance.ts` (DI fix + getSchedulerNames/stop); `delivery-engine/index.ts` (export WorkerOperations); `auth/{auth-options.ts,auth.service.ts}` (trustedOrigins); `platform/config/env.schema.ts` (+AUTH_TRUSTED_ORIGINS); `seed.ts`
+- `apps/web/**` (full app: configs, src/app, components, lib, store, middleware)
+- `apps/server/test/int/trpc.spec.ts` (new, 7 tests), `test/int/test-app.ts` (register tRPC), `test/int/resilience.spec.ts` (scheduler regression test), `test/int/rest-api.spec.ts` (rate-limit determinism)
+- Docs: API.md (router status note), ARCHITECTURE.md (trpc module, AUTH_TRUSTED_ORIGINS), README.md (web run instructions, ports), PHASES.md (Phase 7 ticked), `.env.example`, turbo.json (.next outputs), eslint.config.mjs
+
+### Decisions made
+
+- New deps: `@trpc/server@11.19.0` (server), web: `next@15.5.28` (mature 15.x over 16 — fewer unknowns for a large autonomous run), `react@19.3.1`, `@trpc/client@11.19.0`, `@trpc/react-query@11.19.0`, `@tanstack/react-query@5.104.5`, `zustand@5.0.16`, `better-auth@1.7.12` (matches server), `tailwindcss@4.3.3` + `@tailwindcss/postcss@4.3.3`, `lucide-react@1.61.0`, `class-variance-authority@0.7.1`, `clsx@2.1.1`, `tailwind-merge@3.7.0`, Radix primitives (`dropdown-menu@2.2.1`, `label@2.1.17`, `separator@1.2.0`, `slot@1.5.0`), `@types/react@19.3.0`, `@types/react-dom@19.3.0`
+- shadcn/ui vendored by hand (button/input/label/card/badge/skeleton/dropdown-menu) instead of running the shadcn CLI — deterministic, no registry fetch at build time; Radix primitives are the same dependency the CLI would add
+- tRPC error contract: `mapErrors` middleware checks `result.ok` (tRPC v11 never rejects `next()` — errors arrive as `{ok:false,error}` with the original on `cause`); `toTrpcError` maps AppError codes + plain ZodErrors (input validation) onto API.md section 3 tRPC codes
+- Web dev port pinned 3100 (3000 is taken on this machine); recorded in README + .env.example
+- No eslint-plugin-react-hooks yet (new dep; Next build lint already validates hooks via its own pass) — will add in Phase 14 CI hardening if needed
+
+### Commands run and results
+
+- `pnpm lint`: pass (after config fix); `pnpm typecheck`: pass (4/4); `pnpm test`: pass (33 unit); `pnpm test:int`: pass (61 integration, 9 files); `pnpm build`: pass (web 7 routes + middleware)
+- Live smoke through the web origin (3100): sign-up 200, org create/set-active 200, `GET /trpc/endpoints.list` 200 authed / 401 anon, `/overview` 200 authed / 307→/sign-in anon; `/health/ready` 200; maintenance schedulers now register (no boot failure line)
+
+### Docs updated
+
+- API.md, ARCHITECTURE.md, README.md, PHASES.md, .env.example (see above)
+
+### Issues, risks, open questions
+
+- tRPC v11 middleware semantics differ from docs impressions: last-added middleware is NOT outermost — errors from downstream arrive via `result.ok:false`; verified empirically with an isolated caller test
+- Org-switch UI flow is verified via integration tests + code path; browser-level E2E (sign in → switch org → overview) is the explicit Phase 8 Playwright scope
+- `endpoints.test` returns unavailable on the api role until the Phase 10 gRPC adapter
+
+### Next steps
+
+- Phase 8: dashboard features (endpoints/events/deliveries/apiKeys pages, secret reveal-once, replay, members/settings, Playwright E2E + screenshots to docs/screenshots/)

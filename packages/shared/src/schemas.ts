@@ -58,3 +58,17 @@ export const listDeliveriesQuerySchema = listQuerySchema.extend({
 });
 
 export const IDEMPOTENCY_KEY_MAX = 255;
+
+// --- Dashboard (tRPC) schemas — API.md section 3 ---------------------------
+
+export const idSchema = z.string().min(1);
+
+export const setEndpointStatusSchema = z.object({
+  id: idSchema,
+  status: z.enum(['active', 'disabled']),
+});
+
+export const testEndpointSchema = z.object({
+  id: idSchema,
+  eventType: eventTypeSchema.optional(),
+});
