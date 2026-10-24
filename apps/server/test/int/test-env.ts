@@ -14,6 +14,7 @@ export interface TestEnv {
   BETTER_AUTH_URL: string;
   ENCRYPTION_KEY: string;
   INTERNAL_GRPC_TOKEN: string;
+  ALLOW_INSECURE_ENDPOINTS: string;
 }
 
 let cached: TestEnv | undefined;

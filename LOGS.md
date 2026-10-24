@@ -342,3 +342,51 @@ Append-only. **After every run**, add a new entry at the **bottom** using the te
 ### Next steps
 
 - Phase 5: BullMQ queues, enqueue-after-commit, worker processor with signing + SSRF-checked HTTP client, backoff, dead transition, event bus, test receiver, Testcontainers integration tests
+
+---
+
+## Run 006: 2026-10-24
+
+- **Agent / tool:** zcode, GLM-5.3
+- **Phase / task:** Phase 5: all tasks (BullMQ, processor, signing, SSRF HTTP client, backoff, dead transition, event bus, test receiver, integration tests)
+- **Status:** completed
+
+### What I did
+
+- `delivery-queue` module: BullMQ queue `delivery` (prefix `hl:bull`), one job per attempt, `jobId = {deliveryId}.{attemptNumber}`, retry schedule (0/5s/30s/2m/10m/1h/6h/24h, ±20% jitter) as pure functions
+- `delivery-engine` module: processor loads delivery/endpoint/event, claims the attempt atomically (`UPDATE ... WHERE attempt_count = expected`), signs `{timestamp}.{body}` HMAC-SHA256 (dual signature during rotation), sends via undici with per-endpoint timeout, no redirects, 4 KB response truncation, connect-time SSRF (custom DNS lookup validating every resolved IP); persists attempts; transitions retrying/dead/succeeded; re-enqueues the next attempt with the scheduled delay; emits `delivery.attempt.completed` + `delivery.status.changed` on the Nest event bus
+- Worker bootstrap starts BullMQ workers only for worker/all roles; api role enqueues only
+- EventsService enqueues each delivery AFTER the ingestion transaction commits
+- Test receiver (ok/fail/flaky/redirect/slow) + 7 integration tests: signed end-to-end delivery with signature verification, retry on schedule (~5s to attempt 2, jittered), dead after max attempts, redirect = failure, timeout outcome, dual signatures, duplicate-job no-op (concurrent claim race)
+- DeliveriesRepository gained lifecycle methods (claim/mark*) so the engine never touches deliveries tables directly (boundary lint enforced this)
+
+### Files changed
+
+- `apps/server/src/modules/{delivery-queue,delivery-engine}/**`, processor refactor, events service enqueue, RedisService.duplicateForBullMq, module wiring (EventEmitterModule + role-based engine), test receiver + delivery-engine.spec, ARCHITECTURE.md module table
+
+### Decisions made
+
+- **New module `delivery-queue`** (enqueue side only): breaks the events ↔ delivery-engine import cycle; events and the engine both use it. ARCHITECTURE.md table updated.
+- **jobId separator is `.`** — BullMQ 6 rejects custom ids containing `:` (its internal separator). The `{deliveryId}:{attempt}` convention in the docs maps to `{deliveryId}.{attempt}`; docs updated.
+- **BullMQ connections must not inherit `commandTimeout`**: the platform client's 5s command timeout aborted BullMQ's long blocking commands — delayed-job promotion stalled intermittently (root cause of flaky retries). `duplicateForBullMq()` now builds a fresh connection (`maxRetriesPerRequest: null`, no command timeout).
+- Manual per-attempt re-enqueue instead of BullMQ built-in retries: keeps jobId-per-attempt semantics and makes reconciler checks simple
+- Every suite runs in its own org (fan-out isolation); receiver-based suites opt into ALLOW_INSECURE_ENDPOINTS per app instance
+- New deps: `bullmq@6.4.1`, `@nestjs/event-emitter@12.0.1`, `undici@8.12.3`
+
+### Commands run and results
+
+- `pnpm lint` / `typecheck` / `build`: pass
+- `pnpm test`: 45 unit tests pass
+- `pnpm test:int`: 42 integration tests pass (5 files)
+
+### Docs updated
+
+- ARCHITECTURE.md (module table incl. delivery-queue, jobId note), PHASES.md (Phase 5 ticked)
+
+### Issues, risks, open questions
+
+- Duplicate-execution, redirect, timeout, dual-signature and retry-schedule behaviors are all covered by tests
+
+### Next steps
+
+- Phase 6: circuit breaker (Redis + Postgres snapshot), half-open probes, auto-disable, outbound rate limiter, reconciler, graceful shutdown drain, stalled-job handling, maintenance schedulers, chaos test (worker kill)

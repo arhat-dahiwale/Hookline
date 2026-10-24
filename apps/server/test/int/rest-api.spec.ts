@@ -5,6 +5,12 @@ import { DeliveriesRepository } from '../../src/modules/deliveries/index.js';
 import { EndpointsService } from '../../src/modules/endpoints/index.js';
 import { EventsRepository } from '../../src/modules/events/index.js';
 import { tenantScope } from '../../src/modules/platform/index.js';
+import { TokenBucketRateLimiter } from '../../src/modules/platform/rate-limiter/token-bucket.js';
+import { RedisService } from '../../src/modules/platform/redis/redis.service.js';
+import {
+  INGESTION_BURST_CAPACITY,
+  INGESTION_RATE_PER_SECOND,
+} from '../../src/modules/events/ingestion-rate-limit.guard.js';
 import { createTestApplication, type TestApplication } from './test-app.js';
 
 let test: TestApplication;
@@ -51,14 +57,18 @@ beforeAll(async () => {
   ).secret;
 
   // Matching endpoints: one catches everything, one only invoice.* types.
-  await endpoints.create(scope, { url: 'https://example.com/all' }, { type: 'system' });
+  await endpoints.create(scope, { url: 'https://no-such-host.invalid/all' }, { type: 'system' });
   await endpoints.create(
     scope,
-    { url: 'https://example.com/invoices', eventTypes: ['invoice.*'] },
+    { url: 'https://no-such-host.invalid/invoices', eventTypes: ['invoice.*'] },
     { type: 'system' },
   );
   await endpoints
-    .create(scope, { url: 'https://example.com/disabled', eventTypes: [] }, { type: 'system' })
+    .create(
+      scope,
+      { url: 'https://no-such-host.invalid/disabled', eventTypes: [] },
+      { type: 'system' },
+    )
     .then(async (created) => {
       await endpoints.setStatus(scope, created.endpoint.id, 'disabled', 'manual', {
         type: 'system',
@@ -93,7 +103,9 @@ function inject(
 
 describe('endpoints API', () => {
   it('creates an endpoint and returns the secret exactly once', async () => {
-    const res = await inject('POST', '/v1/endpoints', { url: 'https://example.com/new-hook' });
+    const res = await inject('POST', '/v1/endpoints', {
+      url: 'https://no-such-host.invalid/new-hook',
+    });
     expect(res.statusCode).toBe(201);
     const body = res.json();
     expect(body.id).toMatch(/^end_/);
@@ -122,7 +134,7 @@ describe('endpoints API', () => {
 
   it('lists, updates, toggles, rotates, and soft-deletes', async () => {
     const created = await inject('POST', '/v1/endpoints', {
-      url: 'https://example.com/lifecycle',
+      url: 'https://no-such-host.invalid/lifecycle',
       description: 'before',
     });
     const id = created.json().id as string;
@@ -133,7 +145,7 @@ describe('endpoints API', () => {
 
     const patched = await inject('PATCH', `/v1/endpoints/${id}`, { description: 'after' });
     expect(patched.json().description).toBe('after');
-    expect(patched.json().url).toBe('https://example.com/lifecycle');
+    expect(patched.json().url).toBe('https://no-such-host.invalid/lifecycle');
 
     const disabled = await inject('POST', `/v1/endpoints/${id}/disable`);
     expect(disabled.json().status).toBe('disabled');
@@ -166,7 +178,7 @@ describe('endpoints API', () => {
     const create = await inject(
       'POST',
       '/v1/endpoints',
-      { url: 'https://example.com/x' },
+      { url: 'https://no-such-host.invalid/x' },
       {
         authorization: `Bearer ${readKey}`,
       },
@@ -199,18 +211,18 @@ describe('events API', () => {
     ).secret;
     const catchAll = await endpoints.create(
       scope,
-      { url: 'https://example.com/all' },
+      { url: 'https://no-such-host.invalid/all' },
       { type: 'system' },
     );
     catchAllEndpointId = catchAll.endpoint.id;
     await endpoints.create(
       scope,
-      { url: 'https://example.com/invoices', eventTypes: ['invoice.*'] },
+      { url: 'https://no-such-host.invalid/invoices', eventTypes: ['invoice.*'] },
       { type: 'system' },
     );
     const disabled = await endpoints.create(
       scope,
-      { url: 'https://example.com/disabled' },
+      { url: 'https://no-such-host.invalid/disabled' },
       { type: 'system' },
     );
     await endpoints.setStatus(scope, disabled.endpoint.id, 'disabled', 'manual', {
@@ -370,11 +382,14 @@ describe('deliveries API', () => {
 
     const one = await inject('GET', `/v1/deliveries/${list.json().data[0].id}`);
     expect(one.statusCode).toBe(200);
-    expect(one.json()).toMatchObject({ status: 'pending', attemptCount: 0, maxAttempts: 8 });
+    expect(['pending', 'in_progress', 'retrying']).toContain(one.json().status);
+    expect(one.json().maxAttempts).toBe(8);
 
     const attempts = await inject('GET', `/v1/deliveries/${one.json().id}/attempts`);
     expect(attempts.statusCode).toBe(200);
-    expect(attempts.json().data).toEqual([]);
+    // The engine may already have recorded attempt 1 (DNS failure).
+    expect(Array.isArray(attempts.json().data)).toBe(true);
+    expect(attempts.json().data.length).toBeLessThanOrEqual(2);
 
     const filtered = await inject('GET', '/v1/deliveries?status=succeeded');
     expect(filtered.json().data).toEqual([]);
@@ -391,7 +406,7 @@ describe('deliveries API', () => {
     const deliveriesRepository = test.app.get(DeliveriesRepository);
     const other = await endpointsService.create(
       otherScope,
-      { url: 'https://example.com/other' },
+      { url: 'https://no-such-host.invalid/other' },
       { type: 'system' },
     );
     const event = await eventsRepository.insert({
@@ -416,6 +431,8 @@ describe('deliveries API', () => {
 describe('rate limiting', () => {
   it('rate limits ingestion per API key with headers', async () => {
     const apiKeys = test.app.get(ApiKeysService);
+    const limiter = test.app.get(TokenBucketRateLimiter);
+    const redis = test.app.get(RedisService);
     const key = (
       await apiKeys.create(tenantScope(orgId), {
         name: 'flood',
@@ -424,25 +441,80 @@ describe('rate limiting', () => {
       })
     ).secret;
 
-    let saw429 = false;
-    let sawHeaders = false;
-    for (let i = 0; i < 300 && !saw429; i += 1) {
+    // Every ingestion response carries the RateLimit-* headers (API.md 1.1).
+    for (let i = 0; i < 3; i += 1) {
       const res = await test.instance.inject({
         method: 'POST',
         url: '/v1/events',
         payload: JSON.stringify({ type: 'flood.event', payload: { i } }),
-        headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+        headers: { authorization: 'Bearer ' + key, 'content-type': 'application/json' },
       });
-      if (res.headers['ratelimit-limit']) sawHeaders = true;
-      if (res.statusCode === 429) {
-        saw429 = true;
-        expect(res.json().error.code).toBe('rate_limited');
-        expect(Number(res.headers['retry-after'])).toBeGreaterThan(0);
-        break;
+      expect(res.statusCode).toBe(202);
+      expect(res.headers['ratelimit-limit']).toBe(String(INGESTION_BURST_CAPACITY));
+      expect(Number(res.headers['ratelimit-remaining'])).toBeLessThanOrEqual(
+        INGESTION_BURST_CAPACITY,
+      );
+    }
+
+    // The bucket itself denies once exhausted (deterministic, no HTTP).
+    const bucketKey = 'hl:rl:ingest:test-bucket';
+    await redis.client.del(bucketKey);
+    let denied = false;
+    let allowedCount = 0;
+    for (let i = 0; i < INGESTION_BURST_CAPACITY + 5 && !denied; i += 1) {
+      const result = await limiter.take(bucketKey, {
+        ratePerSecond: INGESTION_RATE_PER_SECOND,
+        capacity: INGESTION_BURST_CAPACITY,
+      });
+      if (result.allowed) {
+        allowedCount += 1;
+      } else {
+        denied = true;
+        expect(result.retryAfterMs).toBeGreaterThan(0);
+        expect(result.retryAfterMs).toBeLessThanOrEqual(1000 / INGESTION_RATE_PER_SECOND + 50);
       }
     }
-    expect(sawHeaders).toBe(true);
-    expect(saw429).toBe(true);
+    expect(denied).toBe(true);
+    // The loop itself takes time, so a few refill tokens sneak in.
+    expect(allowedCount).toBeGreaterThanOrEqual(INGESTION_BURST_CAPACITY);
+    expect(allowedCount).toBeLessThanOrEqual(INGESTION_BURST_CAPACITY + 10);
+
+    // The HTTP guard renders 429 with Retry-After when the key is exhausted.
+    const exhausted = await apiKeys.create(tenantScope(orgId), {
+      name: 'exhausted',
+      scopes: ['events:write'],
+      createdByUserId: 'u',
+    });
+    const guardKey = 'hl:rl:ingest:' + exhausted.key.id;
+    for (let i = 0; i < INGESTION_BURST_CAPACITY + 2; i += 1) {
+      await limiter.take(guardKey, {
+        ratePerSecond: INGESTION_RATE_PER_SECOND,
+        capacity: INGESTION_BURST_CAPACITY,
+      });
+    }
+    // Refill is 50/s, so a burst right after draining must hit 429.
+    let blockedStatus: number | null = null;
+    let blockedHeaders: Record<string, unknown> = {};
+    let blockedBody: { error?: { code?: string } } = {};
+    for (let i = 0; i < 15 && blockedStatus !== 429; i += 1) {
+      const attempt = await test.instance.inject({
+        method: 'POST',
+        url: '/v1/events',
+        payload: JSON.stringify({ type: 'blocked.event', payload: {} }),
+        headers: {
+          authorization: 'Bearer ' + exhausted.secret,
+          'content-type': 'application/json',
+        },
+      });
+      if (attempt.statusCode === 429) {
+        blockedStatus = attempt.statusCode;
+        blockedHeaders = attempt.headers;
+        blockedBody = attempt.json();
+      }
+    }
+    expect(blockedStatus).toBe(429);
+    expect(blockedBody.error?.code).toBe('rate_limited');
+    expect(Number(blockedHeaders['retry-after'])).toBeGreaterThan(0);
   });
 });
 

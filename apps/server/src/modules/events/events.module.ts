@@ -1,6 +1,7 @@
 import type { DynamicModule } from '@nestjs/common';
 
 import { ApiKeysModule } from '../api-keys/index.js';
+import { DeliveryQueueModule } from '../delivery-queue/index.js';
 import { DeliveriesModule } from '../deliveries/index.js';
 import { EndpointsModule } from '../endpoints/index.js';
 import { EventsController } from './events.controller.js';
@@ -18,7 +19,12 @@ export class EventsModule {
     if (cachedModule) return cachedModule;
     cachedModule = {
       module: EventsModule,
-      imports: [ApiKeysModule.forRoot(), EndpointsModule.forRoot(), DeliveriesModule.forRoot()],
+      imports: [
+        ApiKeysModule.forRoot(),
+        EndpointsModule.forRoot(),
+        DeliveriesModule.forRoot(),
+        DeliveryQueueModule.forRoot(),
+      ],
       controllers: [EventsController],
       providers: [EventsRepository, EventsService, IngestionRateLimitGuard],
       exports: [EventsRepository, EventsService],

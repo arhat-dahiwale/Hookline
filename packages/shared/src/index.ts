@@ -5,6 +5,7 @@ export const API_VERSION = 'v1' as const;
 export { newId, ULID_PATTERN } from './ids.js';
 export {
   validateEndpointUrl,
+  isBlockedIp,
   type UrlValidationOptions,
   type UrlValidationResult,
 } from './ssrf.js';

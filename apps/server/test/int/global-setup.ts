@@ -33,6 +33,8 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     BETTER_AUTH_URL: 'http://localhost:0',
     ENCRYPTION_KEY: randomBytes(32).toString('base64'),
     INTERNAL_GRPC_TOKEN: randomBytes(32).toString('hex'),
+    // Suites that exercise the local test receiver override this to 'true'.
+    ALLOW_INSECURE_ENDPOINTS: 'false',
   };
   writeFileSync(ENV_FILE, JSON.stringify(testEnv));
 

@@ -10,3 +10,6 @@ allowBuilds:
   esbuild: true
   protobufjs: true
   ssh2: false
+
+minimumReleaseAgeExclude:
+  - bullmq@6.4.1

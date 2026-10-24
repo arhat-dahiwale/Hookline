@@ -8,6 +8,7 @@ import { idempotencyKeyReuse, notFound, payloadTooLarge } from '../platform/erro
 import { UnitOfWork } from '../platform/database/unit-of-work.js';
 import { decodeCursor } from '../platform/pagination.js';
 import { RedisService } from '../platform/redis/redis.service.js';
+import { DeliveryQueue } from '../delivery-queue/index.js';
 import { DeliveriesRepository, type DeliveryRow } from '../deliveries/index.js';
 import { EndpointsRepository } from '../endpoints/index.js';
 import {
@@ -36,7 +37,8 @@ export interface IngestResult {
  * Event ingestion (ARCHITECTURE.md 5.1): idempotency check (Redis fast
  * path, Postgres unique constraint authoritative), then ONE transaction
  * inserting the event plus one pending delivery per matching endpoint.
- * Enqueue-after-commit lands in Phase 5.
+ * After commit each delivery is enqueued; a crash in that window is healed
+ * by the reconciler (Phase 6).
  */
 @Injectable()
 export class EventsService {
@@ -46,6 +48,7 @@ export class EventsService {
     private readonly deliveriesRepository: DeliveriesRepository,
     private readonly unitOfWork: UnitOfWork,
     private readonly redis: RedisService,
+    private readonly deliveryQueue: DeliveryQueue,
   ) {}
 
   async ingest(scope: TenantScope, input: IngestInput): Promise<IngestResult> {
@@ -94,6 +97,15 @@ export class EventsService {
           'EX',
           IDEMPOTENCY_TTL_SECONDS,
         );
+      }
+      // Enqueue AFTER commit (ARCHITECTURE.md 5.1).
+      for (const delivery of deliveries) {
+        await this.deliveryQueue.enqueueAttempt({
+          id: delivery.id,
+          organizationId: delivery.organizationId,
+          attemptCount: delivery.attemptCount,
+          status: delivery.status,
+        });
       }
       return { event, deliveries, replay: false };
     } catch (error) {
