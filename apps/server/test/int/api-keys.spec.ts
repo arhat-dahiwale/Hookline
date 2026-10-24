@@ -198,7 +198,7 @@ describe('api key lifecycle', () => {
     const created = await endpointsService.create(
       scope,
       {
-        url: 'https://example.com/hook',
+        url: 'https://no-such-host.invalid/hook',
       },
       { type: 'system' },
     );

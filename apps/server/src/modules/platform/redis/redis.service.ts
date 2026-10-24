@@ -12,10 +12,12 @@ import { APP_CONFIG, type AppConfig } from '../config/app-config.js';
 @Injectable()
 export class RedisService implements OnApplicationShutdown {
   private readonly logger = new Logger(RedisService.name);
+  private readonly url: string;
   readonly client: Redis;
 
   constructor(@Inject(APP_CONFIG) config: AppConfig) {
-    this.client = new Redis(config.REDIS_URL, {
+    this.url = config.REDIS_URL;
+    this.client = new Redis(this.url, {
       maxRetriesPerRequest: 2,
       enableAutoPipelining: true,
       commandTimeout: 5_000,
@@ -27,9 +29,16 @@ export class RedisService implements OnApplicationShutdown {
     });
   }
 
-  /** New connection sharing the same config, tuned for BullMQ. */
+  /**
+   * Fresh connection for BullMQ, built from the URL: `maxRetriesPerRequest:
+   * null` is required by BullMQ, and no command timeout may be inherited —
+   * BullMQ issues long blocking commands that a 5s timeout would abort.
+   */
   duplicateForBullMq(): Redis {
-    return this.client.duplicate({ maxRetriesPerRequest: null, enableAutoPipelining: false });
+    return new Redis(this.url, {
+      maxRetriesPerRequest: null,
+      enableAutoPipelining: false,
+    });
   }
 
   async ping(): Promise<void> {

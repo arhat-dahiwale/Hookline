@@ -20,8 +20,11 @@ export interface TestApplication {
  * Boots the full application against the Testcontainers-backed Postgres and
  * Redis. Extra controllers (e.g. guard fixtures) join the root testing module.
  */
-export async function createTestApplication(controllers: Type[] = []): Promise<TestApplication> {
-  const config = parseEnv({ ...loadTestEnv() });
+export async function createTestApplication(
+  controllers: Type[] = [],
+  envOverrides: Partial<ReturnType<typeof loadTestEnv>> = {},
+): Promise<TestApplication> {
+  const config = parseEnv({ ...loadTestEnv(), ...envOverrides });
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule.forRole('all', config)],
     controllers,

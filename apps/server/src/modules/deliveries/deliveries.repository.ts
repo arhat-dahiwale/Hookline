@@ -149,6 +149,73 @@ export class DeliveriesRepository {
     };
   }
 
+  /** Atomically claims the next attempt; null means someone else won. */
+  async claimAttempt(deliveryId: string, expectedAttemptCount: number): Promise<number | null> {
+    const attemptNumber = expectedAttemptCount + 1;
+    const [row] = await this.database.db
+      .update(deliveries)
+      .set({
+        status: 'in_progress',
+        attemptCount: attemptNumber,
+        lastAttemptAt: new Date(),
+      })
+      .where(and(eq(deliveries.id, deliveryId), eq(deliveries.attemptCount, expectedAttemptCount)))
+      .returning({ attemptCount: deliveries.attemptCount });
+    return row ? attemptNumber : null;
+  }
+
+  async markSucceeded(
+    deliveryId: string,
+    input: { attemptNumber: number; responseStatus: number | null; completedAt: Date },
+  ): Promise<void> {
+    await this.database.db
+      .update(deliveries)
+      .set({
+        status: 'succeeded',
+        completedAt: input.completedAt,
+        lastResponseStatus: input.responseStatus,
+        lastError: null,
+      })
+      .where(eq(deliveries.id, deliveryId));
+  }
+
+  async markDead(
+    deliveryId: string,
+    input: { responseStatus: number | null; lastError: string; completedAt: Date },
+  ): Promise<void> {
+    await this.database.db
+      .update(deliveries)
+      .set({
+        status: 'dead',
+        completedAt: input.completedAt,
+        lastResponseStatus: input.responseStatus,
+        lastError: input.lastError,
+      })
+      .where(eq(deliveries.id, deliveryId));
+  }
+
+  async markRetrying(
+    deliveryId: string,
+    input: { responseStatus: number | null; lastError: string; nextAttemptAt: Date },
+  ): Promise<void> {
+    await this.database.db
+      .update(deliveries)
+      .set({
+        status: 'retrying',
+        nextAttemptAt: input.nextAttemptAt,
+        lastResponseStatus: input.responseStatus,
+        lastError: input.lastError,
+      })
+      .where(eq(deliveries.id, deliveryId));
+  }
+
+  async markCancelled(deliveryId: string, lastError: string): Promise<void> {
+    await this.database.db
+      .update(deliveries)
+      .set({ status: 'cancelled', completedAt: new Date(), lastError })
+      .where(eq(deliveries.id, deliveryId));
+  }
+
   async updateById(id: string, patch: Partial<NewDelivery>): Promise<DeliveryRow | null> {
     const [row] = await this.database.db
       .update(deliveries)

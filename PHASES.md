@@ -13,7 +13,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 | 2     | Auth & multi-tenancy          | [x]    |
 | 3     | Domain schema & API keys      | [x]    |
 | 4     | Public REST API               | [x]    |
-| 5     | Delivery engine               | [ ]    |
+| 5     | Delivery engine               | [x]    |
 | 6     | Resilience                    | [ ]    |
 | 7     | tRPC & dashboard foundation   | [ ]    |
 | 8     | Dashboard features            | [ ]    |
@@ -114,17 +114,17 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 **Goal:** deliveries are actually sent, signed, retried, and recorded.
 **Exit criteria:** an event sent via REST reaches a test receiver with a valid signature. Failures retry on schedule.
 
-- [ ] BullMQ setup: `delivery` and `maintenance` queues, shared Redis connection config
-- [ ] Enqueue after commit (`jobId = deliveryId:attemptNumber`)
-- [ ] Worker processor: load delivery, endpoint, and event, then send the HTTP request
-- [ ] Payload envelope and HMAC-SHA256 signing (dual-signature during rotation)
-- [ ] HTTP client: timeout, no redirects, response body truncation, DNS/IP SSRF check at connect time
-- [ ] Persist every attempt (`delivery_attempts`) and update delivery state
-- [ ] Custom backoff strategy with jitter (schedule in ARCHITECTURE.md)
-- [ ] `dead` transition after max attempts
-- [ ] Internal event bus emitting `delivery.attempt.completed` and `delivery.status.changed`
-- [ ] Local test receiver app/script (configurable to fail, delay, or succeed)
-- [ ] Integration tests with Testcontainers (Postgres + Redis) and the test receiver
+- [x] BullMQ setup: `delivery` and `maintenance` queues, shared Redis connection config
+- [x] Enqueue after commit (`jobId = deliveryId:attemptNumber`)
+- [x] Worker processor: load delivery, endpoint, and event, then send the HTTP request
+- [x] Payload envelope and HMAC-SHA256 signing (dual-signature during rotation)
+- [x] HTTP client: timeout, no redirects, response body truncation, DNS/IP SSRF check at connect time
+- [x] Persist every attempt (`delivery_attempts`) and update delivery state
+- [x] Custom backoff strategy with jitter (schedule in ARCHITECTURE.md)
+- [x] `dead` transition after max attempts
+- [x] Internal event bus emitting `delivery.attempt.completed` and `delivery.status.changed`
+- [x] Local test receiver app/script (configurable to fail, delay, or succeed)
+- [x] Integration tests with Testcontainers (Postgres + Redis) and the test receiver
 
 ## Phase 6: Resilience
 

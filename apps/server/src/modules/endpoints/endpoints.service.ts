@@ -83,7 +83,7 @@ export class EndpointsService {
     scope: TenantScope,
     id: string,
     gracePeriodHours: number,
-    actor: { type: 'user' | 'api_key'; id: string },
+    actor: { type: 'user' | 'api_key' | 'system'; id?: string },
   ): Promise<{ endpoint: EndpointRow; secret: string }> {
     if (gracePeriodHours < 0 || gracePeriodHours > 168) {
       throw conflict('gracePeriodHours must be between 0 and 168');

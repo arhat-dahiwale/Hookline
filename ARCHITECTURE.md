@@ -57,19 +57,20 @@ Scale each role independently. API load follows ingestion and dashboard traffic.
 
 Located in `apps/server/src/modules/`. Each module exposes a public service interface through its `index.ts`. **Other modules may import only from that file.** Boundaries are enforced with lint rules (`eslint-plugin-boundaries` or `dependency-cruiser`).
 
-| Module            | Responsibility                                                             | Owns tables                       | May depend on                    |
-| ----------------- | -------------------------------------------------------------------------- | --------------------------------- | -------------------------------- |
-| `auth`            | Better Auth wiring, session resolution, guards                             | Better Auth tables                | platform                         |
-| `api-keys`        | Create, hash, verify, scope API keys                                       | `api_keys`                        | platform, audit                  |
-| `endpoints`       | Endpoint CRUD, secrets, URL validation, health state                       | `endpoints`, `endpoint_health`    | platform, audit                  |
-| `events`          | Ingestion, idempotency, fan-out orchestration                              | `events`                          | endpoints, deliveries, platform  |
-| `deliveries`      | Delivery lifecycle, attempts, replay logic                                 | `deliveries`, `delivery_attempts` | endpoints, platform              |
-| `delivery-engine` | BullMQ processors, signing, HTTP client, breaker, rate limiter, reconciler | none (uses services)              | deliveries, endpoints, platform  |
-| `realtime`        | WebSocket gateway, Redis pub/sub bridge                                    | none                              | auth, platform                   |
-| `analytics`       | Rollups, stats queries                                                     | `delivery_stats_hourly`           | platform (reads via own queries) |
-| `audit`           | Audit log writer and reader                                                | `audit_logs`                      | platform                         |
-| `health`          | Liveness and readiness                                                     | none                              | platform                         |
-| `platform`        | Config, logger, DB, Redis, telemetry, unit-of-work, errors                 | none                              | none                             |
+| Module            | Responsibility                                                             | Owns tables                       | May depend on                                   |
+| ----------------- | -------------------------------------------------------------------------- | --------------------------------- | ----------------------------------------------- |
+| `auth`            | Better Auth wiring, session resolution, guards                             | Better Auth tables                | platform                                        |
+| `api-keys`        | Create, hash, verify, scope API keys                                       | `api_keys`                        | platform, audit                                 |
+| `endpoints`       | Endpoint CRUD, secrets, URL validation, health state                       | `endpoints`, `endpoint_health`    | platform, audit                                 |
+| `events`          | Ingestion, idempotency, fan-out orchestration                              | `events`                          | endpoints, deliveries, delivery-queue, platform |
+| `deliveries`      | Delivery lifecycle, attempts, replay logic                                 | `deliveries`, `delivery_attempts` | endpoints, platform                             |
+| `delivery-queue`  | BullMQ delivery queue (enqueue side), retry schedule and backoff           | none                              | platform                                        |
+| `delivery-engine` | BullMQ processors, signing, HTTP client, breaker, rate limiter, reconciler | none (uses services)              | delivery-queue, deliveries, endpoints, platform |
+| `realtime`        | WebSocket gateway, Redis pub/sub bridge                                    | none                              | auth, platform                                  |
+| `analytics`       | Rollups, stats queries                                                     | `delivery_stats_hourly`           | platform (reads via own queries)                |
+| `audit`           | Audit log writer and reader                                                | `audit_logs`                      | platform                                        |
+| `health`          | Liveness and readiness                                                     | none                              | platform                                        |
+| `platform`        | Config, logger, DB, Redis, telemetry, unit-of-work, errors                 | none                              | none                                            |
 
 **Rules**
 
@@ -97,7 +98,7 @@ Controllers, routers, and handlers do three things only: authenticate and author
 3. Zod validates the body (type format, 256 KB cap).
 4. Idempotency check: Redis fast path, Postgres unique constraint as the source of truth.
 5. In **one transaction**: insert the event, find matching active endpoints, and insert one `pending` delivery per endpoint.
-6. After commit: enqueue one `delivery` job per delivery (`jobId = {deliveryId}:{attempt}`).
+6. After commit: enqueue one `delivery` job per delivery (`jobId = {deliveryId}.{attempt}` — BullMQ reserves `:` in custom job ids, so the documented `: ` convention maps to `.`).
 7. Return `202` with the event and delivery IDs.
 
 If the process dies between steps 5 and 6, the **reconciler** finds `pending` deliveries older than the grace period with no live job and enqueues them.

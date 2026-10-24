@@ -77,6 +77,17 @@ export interface UrlValidationResult {
   reason?: string;
 }
 
+/** True when the IP literal is private/reserved/blocked (IPv4 or IPv6). */
+export function isBlockedIp(ip: string): boolean {
+  if (/^d{1,3}(.d{1,3}){3}$/.test(ip)) {
+    return isBlockedIpv4(ip);
+  }
+  if (ip.includes(':')) {
+    return isBlockedIpv6(ip);
+  }
+  return false;
+}
+
 export function validateEndpointUrl(
   rawUrl: string,
   options: UrlValidationOptions,

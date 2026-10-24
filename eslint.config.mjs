@@ -18,6 +18,7 @@ const SERVER_MODULES = [
   'endpoints',
   'events',
   'deliveries',
+  'delivery-queue',
   'delivery-engine',
   'realtime',
   'analytics',
