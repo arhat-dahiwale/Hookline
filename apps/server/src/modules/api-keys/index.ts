@@ -8,3 +8,4 @@ export {
   type ApiKeyRequest,
 } from './api-key.guard.js';
 export { API_KEY_SCOPES, type ApiKeyScope } from './api-keys.schema.js';
+export { presentApiKey } from './api-keys.presenter.js';

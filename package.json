@@ -18,13 +18,16 @@
     "test": "turbo run test",
     "test:int": "turbo run test:int",
     "format": "prettier --write .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",
     "@commitlint/config-conventional": "21.2.4",
     "@eslint/js": "10.0.1",
     "@hookline/config": "workspace:*",
+    "@playwright/test": "1.56.0",
     "eslint": "10.13.0",
     "eslint-config-prettier": "10.1.8",
     "husky": "9.1.7",

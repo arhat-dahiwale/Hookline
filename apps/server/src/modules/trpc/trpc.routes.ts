@@ -4,9 +4,12 @@ import type { INestApplication } from '@nestjs/common';
 
 import type { AppConfig } from '../platform/config/app-config.js';
 import { PinoLoggerService } from '../platform/logger/pino-logger.service.js';
-import { EndpointsRepository } from '../endpoints/index.js';
-import { EndpointsService } from '../endpoints/index.js';
-import { DeliveriesRepository } from '../deliveries/index.js';
+import { EndpointsRepository, EndpointsService } from '../endpoints/index.js';
+import { DeliveriesRepository, DeliveriesService } from '../deliveries/index.js';
+import { EventsService } from '../events/index.js';
+import { ApiKeysService } from '../api-keys/index.js';
+import { AuditService } from '../audit/index.js';
+import { SettingsService } from '../settings/index.js';
 import { TrpcContextFactory } from './trpc-context.factory.js';
 import { createAppRouter } from './app-router.js';
 
@@ -27,6 +30,11 @@ export function registerTrpcRoutes(app: INestApplication, config: AppConfig): vo
     endpointsService: app.get(EndpointsService),
     endpointsRepository: app.get(EndpointsRepository),
     deliveriesRepository: app.get(DeliveriesRepository),
+    deliveriesService: app.get(DeliveriesService),
+    eventsService: app.get(EventsService),
+    apiKeysService: app.get(ApiKeysService),
+    auditService: app.get(AuditService),
+    settingsService: app.get(SettingsService),
     getWorkerOperations: () => contextFactory.getWorkerOperations(),
   });
 

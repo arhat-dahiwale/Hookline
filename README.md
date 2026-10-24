@@ -130,16 +130,17 @@ Then open the dashboard through nginx at `http://localhost:8080`, Grafana at `ht
 
 ## Common scripts
 
-| Command                                | Description                            |
-| -------------------------------------- | -------------------------------------- |
-| `pnpm dev`                             | Run web and server in watch mode       |
-| `pnpm build`                           | Build all apps and packages            |
-| `pnpm lint` / `pnpm typecheck`         | Lint and type-check the repo           |
-| `pnpm test`                            | Unit tests                             |
-| `pnpm test:int`                        | Integration tests (Testcontainers)     |
-| `pnpm db:generate` / `pnpm db:migrate` | Generate and apply migrations          |
-| `pnpm db:seed`                         | Seed demo data                         |
-| `pnpm proto:gen`                       | Generate gRPC code from `.proto` files |
+| Command                                | Description                                                     |
+| -------------------------------------- | --------------------------------------------------------------- |
+| `pnpm dev`                             | Run web and server in watch mode                                |
+| `pnpm build`                           | Build all apps and packages                                     |
+| `pnpm lint` / `pnpm typecheck`         | Lint and type-check the repo                                    |
+| `pnpm test`                            | Unit tests                                                      |
+| `pnpm test:int`                        | Integration tests (Testcontainers)                              |
+| `pnpm test:e2e`                        | Playwright E2E (boots API + web, needs the dev compose running) |
+| `pnpm db:generate` / `pnpm db:migrate` | Generate and apply migrations                                   |
+| `pnpm db:seed`                         | Seed demo data                                                  |
+| `pnpm proto:gen`                       | Generate gRPC code from `.proto` files                          |
 
 ## Demo script (the "wow" moment)
 

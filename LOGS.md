@@ -536,3 +536,55 @@ Append-only. **After every run**, add a new entry at the **bottom** using the te
 ### Next steps
 
 - Phase 8: dashboard features (endpoints/events/deliveries/apiKeys pages, secret reveal-once, replay, members/settings, Playwright E2E + screenshots to docs/screenshots/)
+
+---
+
+## Run 010: 2026-10-25 06:20 (+05:30)
+
+- **Agent / tool:** zcode, GLM-5.3
+- **Phase / task:** Phase 8: dashboard features (all tasks incl. Playwright E2E)
+- **Status:** completed
+
+### What I did
+
+- **Server (tRPC routers for the dashboard):** `events` (list/get/send/replay), `deliveries` (list/get/attempts/replay/replayBulk/since), `apiKeys` (list/create/revoke — full key returned exactly once), `audit` (list), `settings` (get/update). Authorization-matrix integration tests per router (member read / admin write / cross-tenant 404 / unauthenticated 401): `trpc-routers.spec.ts` (5 tests). `deliveries.since` (coerce-date input) feeds the Phase 9 reconnect backfill; `replayBulk` restricted to terminal statuses (dead default) and capped at 200 per call; `deliveries.list` gained from/to filters. Presenters extracted to shared module files (events/deliveries/api-keys) so REST and tRPC render identically
+- **New `settings` module:** `org_settings` table (migration 0003, applied), repository/service with audit on update; API.md settings.get/update now real
+- **API key scopes unified:** the scope list moved to `packages/shared` (`API_KEY_SCOPES`), server re-exports it — dashboard picker and server guard can't drift
+- **Web:** endpoints list+detail (create dialog, health panel with breaker badge, enable/disable, rotate-with-grace, test send, delete), events list (type filter + cursor pagination) + detail (payload JSON, per-event deliveries, replay), deliveries list (status filter, bulk replay of dead) + detail (attempt timeline with expandable request/response inspector, single replay), API keys page (scope checkboxes, revoke), members page (Better Auth list/invite/remove), settings page (retention form + audit log table). Org-create dialog in the switcher (first-run path). Every view has loading/empty/error states with retry; Motion for row/modal transitions; sonner toasts mounted
+- **Playwright E2E (root `pnpm test:e2e`, 5 tests, 1 worker):** anonymous redirects, wrong-credentials error, every-page-renders smoke (writes screenshots), dark mode, and the full core journey: sign-up → org → endpoint → API key (shown once) → ingest via REST with the key → delivery appears succeeded → replay → both deliveries succeeded. Config boots `db:migrate` + `node apps/server/dist/main.js` (API, port 4000) and `next dev` (port 3100) itself; webhook target is the in-app mock route `/api/mock-receiver` (no external network)
+- **Fixed a REAL delivery-engine bug found by the E2E journey:** `ssrfLookup` ignored the `all: true` form Node's `net.connect` uses under autoSelectFamily — every webhook delivery failed with `Invalid IP address: undefined` (kept retrying) when the lookup was exercised through undici's custom-lookup path. The lookup now returns the address ARRAY under `options.all` and `(address, family)` otherwise; the blocklist still rejects if ANY resolved address is private/reserved. Not caught earlier because integration tests exercised the HTTP client against 127.0.0.1 in a code path that masked it — the E2E was the first to hit the full undici connect path
+- Playwright + Chromium installed (allowed exception per run rules); `test:e2e` scripts added at root
+
+### Files changed
+
+- `apps/server/src/modules/trpc/{events,deliveries,api-keys,audit,settings}.router.ts` (new), `app-router.ts` (all routers), `trpc.module.ts`/`trpc.routes.ts` (wiring)
+- `apps/server/src/modules/deliveries/{deliveries.repository.ts,deliveries.service.ts,deliveries.presenter.ts}`; `events/{events.presenter.ts}`; `api-keys/{api-keys.presenter.ts,api-keys.schema.ts}` (shared scopes); `settings/**` (new module + migration 0003); `packages/shared/src/schemas.ts` (+replayBulk/createApiKey/settings schemas, API_KEY_SCOPES)
+- `apps/web/**`: 9 new pages, dialog/select/switch/textarea primitives, secret-dialog, status badges, view-states, org-create dialog, nav expansion, mock-receiver route
+- `playwright.config.ts`, `e2e/{journey,auth-and-pages}.spec.ts`, root package.json scripts, `docs/screenshots/*` (12 PNGs, each < 50 KB)
+- `apps/server/src/modules/delivery-engine/ssrf-http-client.ts` (lookup contract fix)
+- Docs: DATA.md (org_settings), ARCHITECTURE.md (settings module), API.md (phase status), README.md (test:e2e), PHASES.md (Phase 8 ticked)
+
+### Decisions made
+
+- New deps: `react-hook-form@7.91.0` + `@hookform/resolvers@6.0.0` (forms per stack rules), `@tanstack/react-table@9.3.1`, `motion@14.6.0`, `sonner@2.0.8` (toasts), Radix `dialog@1.3.1`/`select@2.4.1`/`switch@1.4.1`/`tabs@1.2.1`, `@playwright/test@1.56.0` (dev, root)
+- E2E runs against the dev compose DB with unique per-run emails (org-scoped isolation) instead of a separate database — keeps Docker use minimal per run rules
+- Members page uses Better Auth's `organization.listMembers()` action inside TanStack Query (v1.7 has no useListMembers hook); invites are used as the membership flow
+- Empty-message for ECONNREFUSED in `lastError` is cosmetic; not worth an error-message pass now (Phase 15 polish)
+
+### Commands run and results
+
+- `pnpm lint`: pass; `pnpm typecheck`: pass; `pnpm test`: pass (33 unit); `pnpm test:int`: pass (66 integration, 10 files); `pnpm build`: pass
+- `pnpm test:e2e`: pass (5/5, ~2 min); 12 screenshots in docs/screenshots/ (36-44 KB each, under the 300 KB cap)
+
+### Docs updated
+
+- DATA.md, ARCHITECTURE.md, API.md, README.md, PHASES.md (see above)
+
+### Issues, risks, open questions
+
+- The ssrfLookup bug means all Phase 5/6 integration delivery tests exercised a path where localhost-style DNS always resolved BEFORE the bug mattered... reviewed: the earlier tests DID send via this client successfully because the failing form was only reached when Node requested `all: true` (autoSelectFamily) — env/version-dependent behavior. The fix is now covered by every delivery test plus E2E. Flagging honestly: prior "deliveries succeeded" claims were true in those runs (delivery-engine.spec asserted real receiver requests), so behavior was correct there; the breakage was environment-shaped (Windows dual-stack localhost resolution) and surfaced via E2E
+- Live log (auto-updating rows without refresh) is Phase 9 — the E2E currently asserts the delivery appears after navigation
+
+### Next steps
+
+- Phase 9: WebSocket gateway (`ws` via @nestjs/platform-ws), Redis pub/sub fan-out (`hl:org:{orgId}`), heartbeats/limits, live log UI with pause/resume, multi-instance fan-out integration test, reconnect backfill via deliveries.since

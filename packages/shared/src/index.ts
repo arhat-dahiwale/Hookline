@@ -23,3 +23,12 @@ export {
   IDEMPOTENCY_KEY_MAX,
 } from './schemas.js';
 export { idSchema, setEndpointStatusSchema, testEndpointSchema } from './schemas.js';
+export {
+  replayDeliverySchema,
+  replayBulkSchema,
+  apiKeyScopesSchema,
+  createApiKeySchema,
+  updateOrgSettingsSchema,
+  API_KEY_SCOPES,
+  type ApiKeyScope,
+} from './schemas.js';

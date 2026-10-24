@@ -16,7 +16,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 | 5     | Delivery engine               | [x]    |
 | 6     | Resilience                    | [x]    |
 | 7     | tRPC & dashboard foundation   | [x]    |
-| 8     | Dashboard features            | [ ]    |
+| 8     | Dashboard features            | [x]    |
 | 9     | Real-time (WebSocket)         | [ ]    |
 | 10    | Internal gRPC                 | [ ]    |
 | 11    | Analytics                     | [ ]    |
@@ -162,16 +162,16 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 **Goal:** operators can do everything through the UI.
 **Exit criteria:** full endpoint, event, delivery, and key management without touching the API directly.
 
-- [ ] Endpoints list and detail (create/edit form with Zod + React Hook Form)
-- [ ] Secret reveal-once modal, rotate secret, enable/disable, test endpoint
-- [ ] Events list (TanStack Table, filters, cursor pagination) and detail
-- [ ] Deliveries list and detail with attempt timeline and request/response inspector
-- [ ] Replay single delivery and bulk replay by filter
-- [ ] API keys page: create (show once), scope selection, revoke
-- [ ] Members and settings pages
-- [ ] Empty, loading, and error states throughout
-- [ ] Motion transitions for list changes and modals
-- [ ] Component and E2E smoke tests (Playwright)
+- [x] Endpoints list and detail (create/edit form with Zod + React Hook Form)
+- [x] Secret reveal-once modal, rotate secret, enable/disable, test endpoint
+- [x] Events list (TanStack Table, filters, cursor pagination) and detail
+- [x] Deliveries list and detail with attempt timeline and request/response inspector
+- [x] Replay single delivery and bulk replay by filter
+- [x] API keys page: create (show once), scope selection, revoke
+- [x] Members and settings pages
+- [x] Empty, loading, and error states throughout
+- [x] Motion transitions for list changes and modals
+- [x] Component and E2E smoke tests (Playwright)
 
 ## Phase 9: Real-time (WebSocket)
 

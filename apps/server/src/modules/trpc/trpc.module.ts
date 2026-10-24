@@ -1,8 +1,12 @@
 import type { DynamicModule } from '@nestjs/common';
 
+import { ApiKeysModule } from '../api-keys/index.js';
+import { AuditModule } from '../audit/index.js';
 import { AuthModule } from '../auth/index.js';
 import { DeliveriesModule } from '../deliveries/index.js';
 import { EndpointsModule } from '../endpoints/index.js';
+import { EventsModule } from '../events/index.js';
+import { SettingsModule } from '../settings/index.js';
 import { TrpcContextFactory } from './trpc-context.factory.js';
 
 /**
@@ -13,7 +17,15 @@ export class TrpcModule {
   static forRoot(): DynamicModule {
     return {
       module: TrpcModule,
-      imports: [AuthModule.forRoot(), EndpointsModule.forRoot(), DeliveriesModule.forRoot()],
+      imports: [
+        AuthModule.forRoot(),
+        EndpointsModule.forRoot(),
+        DeliveriesModule.forRoot(),
+        EventsModule.forRoot(),
+        ApiKeysModule.forRoot(),
+        AuditModule.forRoot(),
+        SettingsModule.forRoot(),
+      ],
       providers: [TrpcContextFactory],
       exports: [TrpcContextFactory],
     };

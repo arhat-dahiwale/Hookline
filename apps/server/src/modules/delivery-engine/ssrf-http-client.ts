@@ -22,34 +22,54 @@ const SNIPPET_LIMIT = 4 * 1024;
  * validated first address to the socket. TLS SNI still uses the hostname
  * because only the connection target is overridden.
  */
-function ssrfLookup(
-  allowInsecure: boolean,
-): (
+function ssrfLookup(allowInsecure: boolean): (
   hostname: string,
-  options: never,
-  callback: (err: Error | null, address: string) => void,
+  options: LookupOptions,
+  // Node net.connect contract: with autoSelectFamily the options carry
+  // `all: true` and the callback takes an address array; otherwise the
+  // single-address (err, address, family) form. Get either wrong and Node
+  // fails the connect with "Invalid IP address: undefined".
+  callback: (
+    err: Error | null,
+    address: string | { address: string; family: number }[],
+    family?: number,
+  ) => void,
 ) => void {
-  return (hostname, _options, callback) => {
+  return (hostname, options, callback) => {
     void dnsLookup(hostname, { all: true, verbatim: true })
       .then((addresses) => {
-        if (allowInsecure) {
-          callback(null, addresses[0]?.address ?? hostname);
+        if (addresses.length === 0) {
+          callback(new Error(`could not resolve ${hostname}`), []);
           return;
         }
-        const blocked = addresses.find((entry) => isBlockedIp(entry.address));
-        if (blocked) {
+        if (!allowInsecure) {
+          // Every resolved address must pass the blocklist (no partial trust).
+          const blocked = addresses.find((entry) => isBlockedIp(entry.address));
+          if (blocked) {
+            callback(
+              Object.assign(new Error(`blocked address for ${hostname}`), { code: 'SSRF_BLOCKED' }),
+              [],
+            );
+            return;
+          }
+        }
+        if (options.all) {
           callback(
-            Object.assign(new Error(`blocked address for ${hostname}`), { code: 'SSRF_BLOCKED' }),
-            '',
+            null,
+            addresses.map((entry) => ({ address: entry.address, family: entry.family })),
           );
           return;
         }
-        callback(null, addresses[0]?.address ?? hostname);
+        callback(null, addresses[0]!.address, addresses[0]!.family);
       })
       .catch((error: unknown) => {
-        callback(error instanceof Error ? error : new Error(String(error)), '');
+        callback(error instanceof Error ? error : new Error(String(error)), []);
       });
   };
+}
+
+interface LookupOptions {
+  all?: boolean;
 }
 
 export interface SsrfHttpClientOptions {

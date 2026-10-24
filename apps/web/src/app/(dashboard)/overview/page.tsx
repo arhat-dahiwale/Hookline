@@ -1,6 +1,7 @@
 'use client';
 
 import { AlertTriangle, Inbox, RefreshCw } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -86,8 +87,11 @@ export default function OverviewPage() {
               <Inbox aria-hidden /> No endpoints yet
             </CardTitle>
             <CardDescription>
-              Create your first endpoint to start receiving webhooks. Endpoint management arrives in
-              Phase 8 — until then, use the REST API (see /docs on the API server).
+              Create your first endpoint on the{' '}
+              <Link href="/endpoints" className="underline underline-offset-4">
+                Endpoints
+              </Link>{' '}
+              page to start receiving signed webhooks.
             </CardDescription>
           </CardHeader>
         </Card>

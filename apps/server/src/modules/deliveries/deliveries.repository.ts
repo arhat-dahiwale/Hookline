@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { newId } from '@hookline/shared';
 
-import { and, asc, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, inArray, lt, lte, sql } from 'drizzle-orm';
 
 import { DatabaseService } from '../platform/database/database.service.js';
 import { TenantScope } from '../platform/database/tenant-scope.js';
@@ -57,7 +57,13 @@ export class DeliveriesRepository {
 
   async list(
     scope: TenantScope,
-    filters: { status?: DeliveryRow['status']; endpointId?: string; eventId?: string },
+    filters: {
+      status?: DeliveryRow['status'];
+      endpointId?: string;
+      eventId?: string;
+      from?: Date;
+      to?: Date;
+    },
     limit: number,
     cursor?: { createdAt: Date; id: string } | null,
   ): Promise<DeliveryRow[]> {
@@ -65,6 +71,8 @@ export class DeliveriesRepository {
     if (filters.status) conditions.push(eq(deliveries.status, filters.status));
     if (filters.endpointId) conditions.push(eq(deliveries.endpointId, filters.endpointId));
     if (filters.eventId) conditions.push(eq(deliveries.eventId, filters.eventId));
+    if (filters.from) conditions.push(gte(deliveries.createdAt, filters.from));
+    if (filters.to) conditions.push(lte(deliveries.createdAt, filters.to));
     if (cursor) {
       conditions.push(
         sql`(${deliveries.createdAt}, ${deliveries.id}) < (${cursor.createdAt.toISOString()}, ${cursor.id})`,
@@ -75,6 +83,38 @@ export class DeliveriesRepository {
       .from(deliveries)
       .where(and(...conditions))
       .orderBy(desc(deliveries.createdAt), desc(deliveries.id))
+      .limit(limit);
+  }
+
+  /**
+   * Deliveries updated after a timestamp, oldest first (API.md deliveries.since
+   * — the WebSocket reconnect backfill). Bounded by the caller's limit.
+   */
+  async listSince(scope: TenantScope, since: Date, limit: number): Promise<DeliveryRow[]> {
+    return this.database.db
+      .select()
+      .from(deliveries)
+      .where(and(scope.whereColumn(deliveries.organizationId), gt(deliveries.updatedAt, since)))
+      .orderBy(asc(deliveries.updatedAt), asc(deliveries.id))
+      .limit(limit);
+  }
+
+  /** Bulk replay feed: terminal-state deliveries matching a filter. */
+  async listMatching(
+    scope: TenantScope,
+    filters: { status?: DeliveryRow['status']; endpointId?: string; from?: Date; to?: Date },
+    limit: number,
+  ): Promise<DeliveryRow[]> {
+    const conditions = [scope.whereColumn(deliveries.organizationId)];
+    if (filters.status) conditions.push(eq(deliveries.status, filters.status));
+    if (filters.endpointId) conditions.push(eq(deliveries.endpointId, filters.endpointId));
+    if (filters.from) conditions.push(gte(deliveries.createdAt, filters.from));
+    if (filters.to) conditions.push(lte(deliveries.createdAt, filters.to));
+    return this.database.db
+      .select()
+      .from(deliveries)
+      .where(and(...conditions))
+      .orderBy(desc(deliveries.createdAt))
       .limit(limit);
   }
 
