@@ -390,3 +390,49 @@ Append-only. **After every run**, add a new entry at the **bottom** using the te
 ### Next steps
 
 - Phase 6: circuit breaker (Redis + Postgres snapshot), half-open probes, auto-disable, outbound rate limiter, reconciler, graceful shutdown drain, stalled-job handling, maintenance schedulers, chaos test (worker kill)
+
+---
+
+## Run 007: 2026-10-24
+
+- **Agent / tool:** zcode, GLM-5.3
+- **Phase / task:** Phase 6: all tasks (breaker, probes, auto-disable, outbound rate limit, reconciler, graceful shutdown, stalled jobs, maintenance schedulers, chaos test)
+- **Status:** completed
+
+### What I did
+
+- CircuitBreakerService (Redis `hl:cb:{endpointId}` + window list + probe lease; snapshots to `endpoint_health`): opens on 10 consecutive failures or >50% of the last 20; cooldown 60s doubling to 15min; half-open via a 30s probe lease (exactly one probe); probe success closes, failure reopens with doubled cooldown; manual enable resets (`endpoint.enabled` event)
+- Processor gating: breaker + per-endpoint outbound token bucket (`hl:rl:endpoint:{id}`) checked BEFORE the attempt claim; blocked jobs are re-delayed (moveToDelayed) without consuming an attempt
+- MaintenanceService: BullMQ job schedulers (`reconciler` every 30s, `breaker-sweep` every 30s) — single firing across replicas; reconciler re-enqueues stale pending (>60s without a live job) and overdue retrying (>15s past next_attempt_at without a live job); sweep auto-disables endpoints open ≥24h with an audit entry
+- Stalled-job handling: stalledInterval 8s, maxStalledCount 3; safe due to the atomic attempt claim
+- Graceful shutdown drain verified end-to-end: closing the app mid-attempt waits for the in-flight delivery to succeed
+- Chaos test: real worker child process (`node dist/main.js`, ROLE=worker) against the shared Testcontainers PG/Redis; SIGKILL mid-flight; restarted worker completes ALL deliveries (at-least-once, no duplicate attempt rows). test:int now depends on build for dist.
+
+### Files changed
+
+- `apps/server/src/modules/delivery-engine/{breaker,maintenance}.ts` (new), delivery-processor gating + redelay, endpoints enable event, resilience + chaos specs, turbo.json, DATA.md/PHASES.md
+
+### Decisions made
+
+- Probe = next real delivery after cooldown (lease-guarded), not a synthetic request — matches "one probe attempt allowed"
+- Cooldown/backdating in tests manipulates Redis directly to avoid real 60s waits
+- `hl:cb:{id}:probe-lease` added to DATA.md's Redis key table
+- Breaker snapshots go through EndpointsRepository.upsertHealth (table ownership respected)
+
+### Commands run and results
+
+- `pnpm lint` / `typecheck` / `build`: pass
+- `pnpm test`: 45 unit tests pass
+- `pnpm test:int`: 50 integration tests pass (7 files, incl. chaos worker-restart)
+
+### Docs updated
+
+- PHASES.md (Phase 6 ticked), DATA.md (probe-lease key)
+
+### Issues, risks, open questions
+
+- None open for Phases 0-6
+
+### Next steps
+
+- Final: re-verify everything on main (lint/typecheck/test/test:int/build), live /health/ready against dev compose, AUTONOMOUS RUN SUMMARY

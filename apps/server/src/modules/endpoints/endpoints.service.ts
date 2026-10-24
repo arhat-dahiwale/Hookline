@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { TenantScope } from '../platform/database/tenant-scope.js';
 import { SecretCipher } from '../platform/crypto/secret-cipher.js';
@@ -37,6 +38,7 @@ export class EndpointsService {
     private readonly repository: EndpointsRepository,
     private readonly cipher: SecretCipher,
     private readonly audit: AuditService,
+    private readonly emitter: EventEmitter2,
   ) {}
 
   async create(
@@ -145,6 +147,10 @@ export class EndpointsService {
       disabledReason: status === 'disabled' ? reason : null,
       disabledAt: status === 'disabled' ? new Date() : null,
     });
+    if (status === 'active') {
+      // The delivery engine resets the circuit breaker on enable (API.md).
+      await this.emitter.emitAsync('endpoint.enabled', { endpointId: id });
+    }
     await this.audit.write({
       organizationId: scope.organizationId,
       actorType: actor.type,

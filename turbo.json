@@ -12,7 +12,7 @@
       "dependsOn": ["^build"]
     },
     "test:int": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build", "build"]
     },
     "dev": {
       "cache": false,

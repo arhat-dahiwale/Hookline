@@ -3,9 +3,11 @@ import type { DynamicModule } from '@nestjs/common';
 import { DeliveriesModule } from '../deliveries/index.js';
 import { EndpointsModule } from '../endpoints/index.js';
 import { EventsModule } from '../events/index.js';
+import { CircuitBreakerService } from './breaker.js';
 import { DeliveryProcessor } from './delivery-processor.js';
 import { DeliveryQueueModule } from '../delivery-queue/index.js';
 import { DeliveryWorkerBootstrap } from './delivery-worker.bootstrap.js';
+import { MaintenanceService } from './maintenance.js';
 
 let cachedModule: DynamicModule | undefined;
 
@@ -21,8 +23,13 @@ export class DeliveryEngineModule {
         EndpointsModule.forRoot(),
         EventsModule.forRoot(),
       ],
-      providers: [DeliveryProcessor, DeliveryWorkerBootstrap],
-      exports: [DeliveryProcessor],
+      providers: [
+        DeliveryProcessor,
+        CircuitBreakerService,
+        MaintenanceService,
+        DeliveryWorkerBootstrap,
+      ],
+      exports: [DeliveryProcessor, CircuitBreakerService, MaintenanceService],
     };
     return cachedModule;
   }

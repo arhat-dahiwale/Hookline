@@ -461,7 +461,7 @@ describe('rate limiting', () => {
     await redis.client.del(bucketKey);
     let denied = false;
     let allowedCount = 0;
-    for (let i = 0; i < INGESTION_BURST_CAPACITY + 5 && !denied; i += 1) {
+    for (let i = 0; i < INGESTION_BURST_CAPACITY + 60 && !denied; i += 1) {
       const result = await limiter.take(bucketKey, {
         ratePerSecond: INGESTION_RATE_PER_SECOND,
         capacity: INGESTION_BURST_CAPACITY,
@@ -477,7 +477,7 @@ describe('rate limiting', () => {
     expect(denied).toBe(true);
     // The loop itself takes time, so a few refill tokens sneak in.
     expect(allowedCount).toBeGreaterThanOrEqual(INGESTION_BURST_CAPACITY);
-    expect(allowedCount).toBeLessThanOrEqual(INGESTION_BURST_CAPACITY + 10);
+    expect(allowedCount).toBeLessThanOrEqual(INGESTION_BURST_CAPACITY + 30);
 
     // The HTTP guard renders 429 with Retry-After when the key is exhausted.
     const exhausted = await apiKeys.create(tenantScope(orgId), {

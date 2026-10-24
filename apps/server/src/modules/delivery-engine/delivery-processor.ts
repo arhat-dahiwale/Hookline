@@ -6,11 +6,14 @@ import {
   DELIVERY_QUEUE_NAME,
   BULLMQ_PREFIX,
   DeliveryQueue,
+  deliveryJobId,
   jitteredDelayForAttempt,
   type DeliveryJobData,
 } from '../delivery-queue/index.js';
 import { SsrfHttpClient } from './ssrf-http-client.js';
 import { deliveryHeaders } from './signing.js';
+import { CircuitBreakerService } from './breaker.js';
+import { TokenBucketRateLimiter } from '../platform/rate-limiter/token-bucket.js';
 import { APP_CONFIG, type AppConfig } from '../platform/config/app-config.js';
 import { tenantScope } from '../platform/database/tenant-scope.js';
 import { RedisService } from '../platform/redis/redis.service.js';
@@ -55,13 +58,19 @@ export class DeliveryProcessor implements OnApplicationShutdown {
     private readonly endpointsService: EndpointsService,
     private readonly eventsRepository: EventsRepository,
     private readonly deliveryQueue: DeliveryQueue,
+    private readonly breaker: CircuitBreakerService,
+    private readonly outboundRateLimiter: TokenBucketRateLimiter,
     private readonly emitter: EventEmitter2,
   ) {
     this.httpClient = new SsrfHttpClient({ allowInsecure: config.ALLOW_INSECURE_ENDPOINTS });
   }
 
   /** Processes one delivery attempt end to end. Exposed for direct testing. */
-  async process(deliveryId: string, organizationId: string): Promise<void> {
+  async process(
+    deliveryId: string,
+    organizationId: string,
+    job?: Job<DeliveryJobData>,
+  ): Promise<void> {
     const delivery = await this.deliveriesRepository.findByIdUnscoped(deliveryId);
     if (!delivery || delivery.organizationId !== organizationId) return;
     if (delivery.status !== 'pending' && delivery.status !== 'retrying') return;
@@ -79,6 +88,22 @@ export class DeliveryProcessor implements OnApplicationShutdown {
     if (!event) {
       await this.deliveriesRepository.markCancelled(delivery.id, 'event missing');
       await this.emitStatusChanged(organizationId, delivery.id, 'cancelled', 0, null);
+      return;
+    }
+
+    // Breaker gate and outbound rate limit (ARCHITECTURE.md 5.2 step 2): a
+    // blocked job is re-delayed WITHOUT consuming an attempt.
+    const gate = await this.breaker.beforeAttempt(endpoint.id);
+    if (!gate.allowed) {
+      await this.redelay(delivery, gate.retryAfterMs, job);
+      return;
+    }
+    const outbound = await this.outboundRateLimiter.take(`hl:rl:endpoint:${endpoint.id}`, {
+      ratePerSecond: endpoint.rateLimitPerSecond,
+      capacity: Math.max(endpoint.rateLimitPerSecond * 2, 1),
+    });
+    if (!outbound.allowed) {
+      await this.redelay(delivery, Math.max(outbound.retryAfterMs, 100), job);
       return;
     }
 
@@ -137,6 +162,12 @@ export class DeliveryProcessor implements OnApplicationShutdown {
       durationMs: result.durationMs,
     } satisfies AttemptCompletedEvent);
 
+    if (result.outcome === 'success') {
+      await this.breaker.recordSuccess(endpoint.id);
+    } else {
+      await this.breaker.recordFailure(endpoint.id);
+    }
+
     const lastError = result.errorMessage ?? `${result.outcome} (status ${result.responseStatus})`;
 
     if (result.outcome === 'success') {
@@ -185,6 +216,30 @@ export class DeliveryProcessor implements OnApplicationShutdown {
     );
   }
 
+  /**
+   * Re-delay the current job (or ensure a delayed job exists for manual
+   * runs) without consuming an attempt. Breaker/rate-limit path only.
+   */
+  private async redelay(
+    delivery: { id: string; organizationId: string; attemptCount: number; status: string },
+    delayMs: number,
+    job?: Job<DeliveryJobData>,
+  ): Promise<void> {
+    const clamped = Math.min(Math.max(delayMs, 250), 60_000);
+    if (job) {
+      await job.moveToDelayed(Date.now() + clamped, job.token).catch(async () => {
+        await this.deliveryQueue.enqueueAttempt(delivery, { delayMs: clamped });
+      });
+      return;
+    }
+    const existing = await this.deliveryQueue.queue.getJob(
+      deliveryJobId(delivery.id, delivery.attemptCount + 1),
+    );
+    if (!existing) {
+      await this.deliveryQueue.enqueueAttempt(delivery, { delayMs: clamped });
+    }
+  }
+
   private async emitStatusChanged(
     organizationId: string,
     deliveryId: string,
@@ -206,12 +261,16 @@ export class DeliveryProcessor implements OnApplicationShutdown {
     this.worker = new Worker<DeliveryJobData>(
       DELIVERY_QUEUE_NAME,
       async (job: Job<DeliveryJobData>) => {
-        await this.process(job.data.deliveryId, job.data.organizationId);
+        await this.process(job.data.deliveryId, job.data.organizationId, job);
       },
       {
         prefix: BULLMQ_PREFIX,
         connection: this.redisService.duplicateForBullMq(),
         concurrency,
+        // Stalled (killed mid-run) jobs are retried; the atomic attempt
+        // claim makes re-execution safe.
+        stalledInterval: 8_000,
+        maxStalledCount: 3,
       },
     );
     this.worker.on('failed', (job, error) => {

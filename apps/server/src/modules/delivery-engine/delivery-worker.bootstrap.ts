@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger, type OnApplicationBootstrap } from '@nestjs
 
 import { APP_CONFIG, type AppConfig } from '../platform/config/app-config.js';
 import { DeliveryProcessor } from './delivery-processor.js';
+import { MaintenanceService } from './maintenance.js';
 
 /**
  * Starts BullMQ workers only in the roles that process deliveries:
@@ -15,11 +16,17 @@ export class DeliveryWorkerBootstrap implements OnApplicationBootstrap {
   constructor(
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     private readonly processor: DeliveryProcessor,
+    private readonly maintenance: MaintenanceService,
   ) {}
 
   onApplicationBootstrap(): void {
     if (this.config.ROLE === 'api') return;
     this.processor.start(this.config.DELIVERY_CONCURRENCY);
+    void this.maintenance.start().catch((error: unknown) => {
+      this.logger.error(
+        `maintenance schedulers failed to start: ${error instanceof Error ? error.message : error}`,
+      );
+    });
     this.logger.log(`delivery worker started (concurrency ${this.config.DELIVERY_CONCURRENCY})`);
   }
 }
