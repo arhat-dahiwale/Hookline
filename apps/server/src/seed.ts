@@ -4,6 +4,7 @@
  */
 import { randomBytes } from 'node:crypto';
 
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 
@@ -75,7 +76,13 @@ async function main(): Promise<void> {
   const redis = new RedisService(config);
   const cipher = new SecretCipher(config);
   const audit = new AuditService(database);
-  const endpointsService = new EndpointsService(new EndpointsRepository(database), cipher, audit);
+  const emitter = new EventEmitter2();
+  const endpointsService = new EndpointsService(
+    new EndpointsRepository(database),
+    cipher,
+    audit,
+    emitter,
+  );
   const apiKeysService = new ApiKeysService(new ApiKeysRepository(database), redis, audit);
 
   const scope = tenantScope(org!.id);

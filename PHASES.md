@@ -14,7 +14,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 | 3     | Domain schema & API keys      | [x]    |
 | 4     | Public REST API               | [x]    |
 | 5     | Delivery engine               | [x]    |
-| 6     | Resilience                    | [ ]    |
+| 6     | Resilience                    | [x]    |
 | 7     | tRPC & dashboard foundation   | [ ]    |
 | 8     | Dashboard features            | [ ]    |
 | 9     | Real-time (WebSocket)         | [ ]    |
@@ -131,16 +131,16 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 **Goal:** the system survives failures gracefully.
 **Exit criteria:** chaos test (kill worker mid-run) loses no deliveries, and a failing endpoint trips its breaker.
 
-- [ ] Circuit breaker (Redis state, Postgres snapshot) with closed/open/half-open transitions
-- [ ] Half-open probe job and recovery logic
-- [ ] Auto-disable after sustained open state, plus audit entry
-- [ ] Per-endpoint outbound rate limiter (delay without consuming an attempt)
-- [ ] Reconciler job (re-enqueue stale `pending`/`retrying` deliveries without live jobs)
-- [ ] Idempotent attempt handling (duplicate job execution is safe)
-- [ ] Graceful shutdown: stop intake, drain in-flight, then exit (API and worker)
-- [ ] Stalled-job handling configuration
-- [ ] Maintenance schedulers registered via BullMQ job schedulers (single firing across replicas)
-- [ ] Tests: breaker transitions, reconciler, shutdown behavior, duplicate-job safety
+- [x] Circuit breaker (Redis state, Postgres snapshot) with closed/open/half-open transitions
+- [x] Half-open probe job and recovery logic
+- [x] Auto-disable after sustained open state, plus audit entry
+- [x] Per-endpoint outbound rate limiter (delay without consuming an attempt)
+- [x] Reconciler job (re-enqueue stale `pending`/`retrying` deliveries without live jobs)
+- [x] Idempotent attempt handling (duplicate job execution is safe)
+- [x] Graceful shutdown: stop intake, drain in-flight, then exit (API and worker)
+- [x] Stalled-job handling configuration
+- [x] Maintenance schedulers registered via BullMQ job schedulers (single firing across replicas)
+- [x] Tests: breaker transitions, reconciler, shutdown behavior, duplicate-job safety
 
 ## Phase 7: tRPC & dashboard foundation
 
