@@ -17,7 +17,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 | 6     | Resilience                    | [x]    |
 | 7     | tRPC & dashboard foundation   | [x]    |
 | 8     | Dashboard features            | [x]    |
-| 9     | Real-time (WebSocket)         | [ ]    |
+| 9     | Real-time (WebSocket)         | [x]    |
 | 10    | Internal gRPC                 | [ ]    |
 | 11    | Analytics                     | [ ]    |
 | 12    | Observability                 | [ ]    |
@@ -178,17 +178,17 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 **Goal:** the live delivery log.
 **Exit criteria:** with 3 API replicas, a browser connected to any replica sees updates from deliveries executed by any worker.
 
-- [ ] WebSocket gateway (`ws` via `@nestjs/platform-ws`) at `/ws`
-- [ ] Handshake auth via Better Auth session, org-scoped subscriptions
-- [ ] Worker publishes events to Redis pub/sub (`hl:org:{orgId}`)
-- [ ] API instances subscribe and fan out to local sockets
-- [ ] Server heartbeat and client ping/pong, dead-connection cleanup
-- [ ] Message envelope and types per API.md
-- [ ] Client hook: connect, reconnect with backoff and jitter, resubscribe
-- [ ] Backfill on reconnect via tRPC query
-- [ ] Live log UI with animated row updates and a pause/resume toggle
-- [ ] Connection limits per user, plus metrics
-- [ ] Tests: multi-instance fan-out, auth failures, reconnect backfill
+- [x] WebSocket gateway (`ws` via `@nestjs/platform-ws`) at `/ws`
+- [x] Handshake auth via Better Auth session, org-scoped subscriptions
+- [x] Worker publishes events to Redis pub/sub (`hl:org:{orgId}`)
+- [x] API instances subscribe and fan out to local sockets
+- [x] Server heartbeat and client ping/pong, dead-connection cleanup
+- [x] Message envelope and types per API.md
+- [x] Client hook: connect, reconnect with backoff and jitter, resubscribe
+- [x] Backfill on reconnect via tRPC query
+- [x] Live log UI with animated row updates and a pause/resume toggle
+- [x] Connection limits per user, plus metrics
+- [x] Tests: multi-instance fan-out, auth failures, reconnect backfill
 
 ## Phase 10: Internal gRPC
 

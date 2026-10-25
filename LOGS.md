@@ -588,3 +588,46 @@ Append-only. **After every run**, add a new entry at the **bottom** using the te
 ### Next steps
 
 - Phase 9: WebSocket gateway (`ws` via @nestjs/platform-ws), Redis pub/sub fan-out (`hl:org:{orgId}`), heartbeats/limits, live log UI with pause/resume, multi-instance fan-out integration test, reconnect backfill via deliveries.since
+
+---
+
+## Run 011: 2026-10-25 07:15 (+05:30)
+
+- **Agent / tool:** zcode, GLM-5.3
+- **Phase / task:** Phase 9: real-time WebSocket (all tasks)
+- **Status:** completed
+
+### What I did
+
+- **`realtime` module (all roles):** `RealtimeService` bridges the in-process bus → Redis `hl:org:{orgId}` (event.created/delivery.created from EventsService; delivery.attempt.completed + delivery.status.changed from the processor; endpoint.health.changed from breaker snapshots; endpoint.auto_disabled from the sweep) and fans Redis messages out to local sockets with per-org Redis subscriptions (ref-counted, subscriber on a dedicated duplicate connection). Bus events now carry `eventId`/`endpointId` routing fields (API.md data shapes updated) so scoped subscriptions (`endpoint:{id}`, `event:{id}`) match without DB lookups
+- **Gateway at `/ws`** (`ws` via `@nestjs/platform-ws`, WsAdapter on the shared HTTP server): handshake auth via the shared `resolveSession()` (4401 when anonymous, 4403 without an active org, 4429 over 10 connections/user), channel ownership checks against the org (4403 for foreign resources), malformed messages → `error` envelope, `ping` → `pong`, server heartbeat every 25 s terminating dead sockets
+- **Found and fixed a real gateway bug via a standalone probe:** the auth handshake awaits a DB round-trip, and `ws` only dispatches frames to listeners attached at dispatch time — the client's first `ping`/`subscribe` (sent on open) was silently DROPPED. Fix: attach a collector synchronously at connection start, queue frames, replay them after auth completes (the first pong now always arrives). Verified by an isolated node probe against the built server before/after
+- **Client:** `useLiveDeliveryFeed` hook (connect → subscribe `org` → bounded inbox; reconnect with exponential backoff 1s base ×2, 30s cap, ±20% jitter; resubscribe every attempt; `onOpenAfterReconnect` triggers backfill via `deliveries.since`), client heartbeat ping every 20s. `LiveLog` component on the deliveries page: rows appear/change without refresh, pause/resume toggle (Zustand `liveLogPaused`) buffering updates while paused, reconnect backfill merges missed rows, table refreshes on live status changes. `WsEnvelope` type shared via the server's type entry point
+- **Integration tests (8, new `realtime.spec.ts`):** api + worker apps as separate "instances" over shared PG/Redis; unauthenticated 4401; ping/pong + subscribe confirm + malformed → error; foreign-resource subscribe → 4403; full delivery lifecycle delivered to an org subscriber; **multi-instance fan-out** (ingest on api, executed by the worker process, client on api receives the status change); **cross-tenant isolation** (org B's event never reaches org A's socket); per-user connection limit → 4429; direct `publish()` bridge path. One test-harness lesson: the ws test client needed a single permanent inbox producer — attaching a listener per assertion duplicated every message
+
+### Files changed
+
+- `apps/server/src/modules/realtime/**` (new: types, service, gateway, module, index); `delivery-processor.ts` (routing fields); `delivery-engine/breaker.ts` + `maintenance.ts` (emissions); `events/events.service.ts` (event.created/delivery.created emits); `app.module.ts` (RealtimeModule all roles); `main.ts` (WsAdapter); `src/trpc-router.ts` (WsEnvelope type export)
+- `apps/web/src/lib/live-feed.ts` (new), `components/live-log.tsx` (new), `app/(dashboard)/deliveries/page.tsx` (LiveLog + backfill + live invalidation)
+- `apps/server/test/int/realtime.spec.ts` (new, 8 tests), `test/int/test-app.ts` (role param + WsAdapter + listen helper)
+- Deps: `@nestjs/platform-ws@12.2.0`, `@nestjs/websockets@12.2.0`, `ws@8.22.0`, dev `@types/ws@8.18.2`
+- Docs: API.md (WS payload routing fields), ARCHITECTURE.md (realtime module deps, NEXT_PUBLIC_WS_URL), README.md (WS note), PHASES.md (Phase 9 ticked)
+
+### Commands run and results
+
+- `pnpm lint` / `pnpm typecheck`: pass; `pnpm test`: pass (33 unit); `pnpm test:int`: pass (74 integration, 11 files); `pnpm build`: pass
+- `pnpm test:e2e`: pass (5/5) — the journey now proves the live log updates without a refresh before checking the table
+- Real results recorded above; no cached-only runs
+
+### Docs updated
+
+- API.md, ARCHITECTURE.md, README.md, PHASES.md (see above)
+
+### Issues, risks, open questions
+
+- Connection limit is per API instance (in-memory), documented honestly: multi-instance enforcement via Redis counters is possible but leaks counts on replica crash; revisit in Phase 13/14 if needed
+- WS metrics (connection count gauge) noted for Phase 12's Prometheus work
+
+### Next steps
+
+- Phase 10: internal gRPC (worker.proto + proto-loader-gen-types, ReplayDelivery/ReplayEvent/TestEndpoint/GetEndpointHealth/StreamDeliveryAttempts, x-internal-token, deadlines, health protocol, cross-process wire test)

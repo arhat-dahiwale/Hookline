@@ -24,6 +24,9 @@ import { EventsRepository } from '../events/index.js';
 export interface AttemptCompletedEvent {
   organizationId: string;
   deliveryId: string;
+  /** Routing fields for scoped WebSocket subscriptions (API.md 4). */
+  eventId: string;
+  endpointId: string;
   attemptNumber: number;
   outcome: 'success' | 'http_error' | 'timeout' | 'network_error' | 'blocked';
   responseStatus: number | null;
@@ -33,6 +36,9 @@ export interface AttemptCompletedEvent {
 export interface DeliveryStatusChangedEvent {
   organizationId: string;
   deliveryId: string;
+  /** Routing fields for scoped WebSocket subscriptions (API.md 4). */
+  eventId: string;
+  endpointId: string;
   status: 'pending' | 'in_progress' | 'retrying' | 'succeeded' | 'dead' | 'cancelled';
   attemptCount: number;
   nextAttemptAt: Date | null;
@@ -78,7 +84,7 @@ export class DeliveryProcessor implements OnApplicationShutdown {
     const endpoint = await this.endpointsRepository.findByIdUnscoped(delivery.endpointId);
     if (!endpoint || endpoint.deletedAt || endpoint.status !== 'active') {
       await this.deliveriesRepository.markCancelled(delivery.id, 'endpoint unavailable');
-      await this.emitStatusChanged(organizationId, delivery.id, 'cancelled', 0, null);
+      await this.emitStatusChanged(delivery, 'cancelled', 0, null);
       return;
     }
     const event = await this.eventsRepository.findById(
@@ -87,7 +93,7 @@ export class DeliveryProcessor implements OnApplicationShutdown {
     );
     if (!event) {
       await this.deliveriesRepository.markCancelled(delivery.id, 'event missing');
-      await this.emitStatusChanged(organizationId, delivery.id, 'cancelled', 0, null);
+      await this.emitStatusChanged(delivery, 'cancelled', 0, null);
       return;
     }
 
@@ -156,6 +162,8 @@ export class DeliveryProcessor implements OnApplicationShutdown {
     await this.emitter.emitAsync('delivery.attempt.completed', {
       organizationId: delivery.organizationId,
       deliveryId: delivery.id,
+      eventId: delivery.eventId,
+      endpointId: delivery.endpointId,
       attemptNumber,
       outcome: result.outcome,
       responseStatus: result.responseStatus,
@@ -176,7 +184,7 @@ export class DeliveryProcessor implements OnApplicationShutdown {
         responseStatus: result.responseStatus,
         completedAt: finishedAt,
       });
-      await this.emitStatusChanged(organizationId, delivery.id, 'succeeded', attemptNumber, null);
+      await this.emitStatusChanged(delivery, 'succeeded', attemptNumber, null);
       return;
     }
 
@@ -186,7 +194,7 @@ export class DeliveryProcessor implements OnApplicationShutdown {
         lastError,
         completedAt: finishedAt,
       });
-      await this.emitStatusChanged(organizationId, delivery.id, 'dead', attemptNumber, null);
+      await this.emitStatusChanged(delivery, 'dead', attemptNumber, null);
       return;
     }
 
@@ -196,13 +204,7 @@ export class DeliveryProcessor implements OnApplicationShutdown {
       lastError,
       nextAttemptAt,
     });
-    await this.emitStatusChanged(
-      organizationId,
-      delivery.id,
-      'retrying',
-      attemptNumber,
-      nextAttemptAt,
-    );
+    await this.emitStatusChanged(delivery, 'retrying', attemptNumber, nextAttemptAt);
 
     // Enqueue the next attempt with the scheduled (jittered) delay.
     await this.deliveryQueue.enqueueAttempt(
@@ -241,15 +243,16 @@ export class DeliveryProcessor implements OnApplicationShutdown {
   }
 
   private async emitStatusChanged(
-    organizationId: string,
-    deliveryId: string,
+    delivery: { organizationId: string; id: string; eventId: string; endpointId: string },
     status: DeliveryStatusChangedEvent['status'],
     attemptCount: number,
     nextAttemptAt: Date | null,
   ): Promise<void> {
     await this.emitter.emitAsync('delivery.status.changed', {
-      organizationId,
-      deliveryId,
+      organizationId: delivery.organizationId,
+      deliveryId: delivery.id,
+      eventId: delivery.eventId,
+      endpointId: delivery.endpointId,
       status,
       attemptCount,
       nextAttemptAt,

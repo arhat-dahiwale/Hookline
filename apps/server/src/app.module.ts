@@ -12,6 +12,7 @@ import { EndpointsModule } from './modules/endpoints/index.js';
 import { EventsModule } from './modules/events/index.js';
 import { HealthModule } from './modules/health/index.js';
 import { PlatformModule } from './modules/platform/index.js';
+import { RealtimeModule } from './modules/realtime/index.js';
 import { TrpcModule } from './modules/trpc/index.js';
 import type { AppConfig } from './modules/platform/index.js';
 
@@ -48,6 +49,8 @@ export class AppModule {
       imports: [
         EventEmitterModule.forRoot(),
         PlatformModule.withConfig(config),
+        // Workers publish bus events to Redis; APIs fan out to WS sockets.
+        RealtimeModule.forRoot(),
         ...httpModules,
         ...workerModules,
       ],

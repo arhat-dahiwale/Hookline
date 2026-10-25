@@ -22,6 +22,8 @@
     "@nestjs/core": "12.2.0",
     "@nestjs/event-emitter": "12.0.1",
     "@nestjs/platform-fastify": "12.2.0",
+    "@nestjs/platform-ws": "12.2.0",
+    "@nestjs/websockets": "12.2.0",
     "@trpc/server": "11.19.0",
     "better-auth": "1.7.12",
     "bullmq": "6.4.1",
@@ -35,6 +37,7 @@
     "rxjs": "7.8.2",
     "swagger-ui-dist": "5.34.0",
     "undici": "8.12.3",
+    "ws": "8.22.0",
     "zod": "4.6.7"
   },
   "devDependencies": {
@@ -45,6 +48,7 @@
     "@testcontainers/redis": "12.2.1",
     "@types/node": "24.19.2",
     "@types/pg": "8.23.1",
+    "@types/ws": "8.18.2",
     "drizzle-kit": "0.31.11",
     "light-my-request": "6.8.0",
     "testcontainers": "12.2.1",
