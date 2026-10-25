@@ -95,12 +95,16 @@ export default tseslint.config(
   ...moduleBoundaryRules,
   {
     // Node scripts (dev runners, codegen) run in plain Node, not TS.
-    files: ['**/scripts/**/*.mjs', '*.mjs'],
+    files: ['**/scripts/**/*.mjs', '**/scripts/**/*.js', '**/e2e/*.mjs', '*.mjs'],
     languageOptions: {
       globals: {
         process: 'readonly',
         console: 'readonly',
         URL: 'readonly',
+        fetch: 'readonly',
+        __ENV: 'readonly',
+        __ITER: 'readonly',
+        __VU: 'readonly',
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
         setInterval: 'readonly',

@@ -250,6 +250,34 @@ describe('reconciler', () => {
     );
   });
 
+  it('heals orphaned in_progress deliveries after a worker died mid-attempt (chaos finding)', async () => {
+    const { orgId, maintenance } = await setup();
+    const { delivery } = await createDelivery(orgId, '/ok');
+
+    // Simulate the chaos-run orphan: worker SIGKILLed after the atomic claim
+    // (status in_progress, attempt consumed, no attempt row, no next attempt).
+    await test.app.get(DeliveriesRepository).updateById(delivery.id, {
+      status: 'in_progress',
+      attemptCount: 1,
+      // Backdate beyond the 5-minute in_progress grace so the reconciler
+      // treats it as orphaned, not as a live attempt.
+      updatedAt: new Date(Date.now() - 6 * 60_000),
+    });
+
+    const healed = await maintenance.runReconciler();
+    expect(healed).toBeGreaterThanOrEqual(1);
+
+    await waitFor(
+      async () =>
+        (await test.app.get(DeliveriesRepository).findByIdUnscoped(delivery.id))?.status ===
+        'succeeded',
+    );
+    // The retried attempt is recorded (attempt 2; attempt 1 died unrecorded).
+    const attempts = await test.app.get(DeliveriesRepository).findAttempts(delivery.id);
+    expect(attempts.length).toBeGreaterThanOrEqual(1);
+    expect(attempts[attempts.length - 1]!.attemptNumber).toBe(2);
+  });
+
   it('re-enqueues overdue retrying deliveries whose job was lost', async () => {
     const { orgId, maintenance } = await setup();
     const { delivery } = await createDelivery(orgId, '/ok');

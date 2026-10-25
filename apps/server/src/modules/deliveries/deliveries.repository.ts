@@ -311,4 +311,19 @@ export class DeliveriesRepository {
       );
     return rows[0]?.count ?? 0;
   }
+
+  /**
+   * Reconciler feed (Phase 13 chaos finding): in_progress deliveries whose
+   * worker died mid-attempt (no live job, no next attempt). Anything older
+   * than the cutoff is reset to retrying NOW; the reconciler then enqueues
+   * the next attempt for them like any overdue retry.
+   */
+  async requeueOrphanedInProgress(olderThan: Date, limit: number): Promise<DeliveryRow[]> {
+    return this.database.db
+      .update(deliveries)
+      .set({ status: 'retrying', nextAttemptAt: new Date() })
+      .where(and(eq(deliveries.status, 'in_progress'), lt(deliveries.updatedAt, olderThan)))
+      .returning()
+      .then((rows) => rows.slice(0, limit));
+  }
 }

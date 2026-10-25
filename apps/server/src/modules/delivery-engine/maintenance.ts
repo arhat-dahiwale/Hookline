@@ -16,6 +16,13 @@ import { BREAKER_24H_MS, CircuitBreakerService } from './breaker.js';
 
 /** Pending deliveries older than this without a live job are re-enqueued. */
 const PENDING_GRACE_MS = 60_000;
+/**
+ * In_progress deliveries older than this are orphaned: their worker died
+ * mid-attempt (SIGKILL), no live job exists and process() refuses
+ * in_progress rows — without this heal they would never finish. 5 min is
+ * far beyond the 35 s hard attempt timeout.
+ */
+const IN_PROGRESS_GRACE_MS = 5 * 60_000;
 /** Retry jobs overdue by this much are considered lost and re-enqueued. */
 const RETRY_GRACE_MS = 15_000;
 const RECONCILER_INTERVAL_MS = 30_000;
@@ -104,6 +111,33 @@ export class MaintenanceService implements OnApplicationShutdown {
         status: delivery.status,
       });
       healed += 1;
+    }
+
+    // Chaos-run finding: heal orphaned in_progress (worker died mid-attempt)
+    // by resetting to retrying-now, then let the retrying pass enqueue them.
+    const orphaned = await this.deliveriesRepository.requeueOrphanedInProgress(
+      new Date(Date.now() - IN_PROGRESS_GRACE_MS),
+      BATCH_LIMIT,
+    );
+    for (const delivery of orphaned) {
+      const nextAttempt = delivery.attemptCount + 1;
+      if (await this.deliveryQueue.hasLiveJob(delivery.id, nextAttempt)) continue;
+      await this.deliveryQueue.queue
+        .getJob(deliveryJobId(delivery.id, nextAttempt))
+        .then((job) => (job ? job.remove().catch(() => undefined) : undefined));
+      await this.deliveryQueue.enqueueAttempt(
+        {
+          id: delivery.id,
+          organizationId: delivery.organizationId,
+          attemptCount: delivery.attemptCount,
+          status: 'retrying',
+        },
+        { delayMs: 0 },
+      );
+      healed += 1;
+    }
+    if (orphaned.length > 0) {
+      this.logger.warn(`reconciler healed ${orphaned.length} orphaned in_progress delivery(ies)`);
     }
 
     const overdueRetrying = await this.deliveriesRepository.findOverdueRetrying(

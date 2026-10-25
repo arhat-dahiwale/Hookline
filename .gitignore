@@ -37,3 +37,6 @@ apps/server/test/int/.testenv.json
 
 # next.js generated
 apps/web/next-env.d.ts
+
+# load/chaos run artifacts
+scripts/load/out/
