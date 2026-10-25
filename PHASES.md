@@ -18,7 +18,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 | 7     | tRPC & dashboard foundation   | [x]    |
 | 8     | Dashboard features            | [x]    |
 | 9     | Real-time (WebSocket)         | [x]    |
-| 10    | Internal gRPC                 | [ ]    |
+| 10    | Internal gRPC                 | [x]    |
 | 11    | Analytics                     | [ ]    |
 | 12    | Observability                 | [ ]    |
 | 13    | Scale topology & chaos demo   | [ ]    |
@@ -195,15 +195,15 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 **Goal:** a real service boundary between API and worker roles.
 **Exit criteria:** with `ROLE=api` and `ROLE=worker` as separate containers, replay and test-endpoint work through gRPC.
 
-- [ ] `packages/proto`: `worker.proto` and codegen script (`pnpm proto:gen`)
-- [ ] gRPC server on the worker role (`ReplayDelivery`, `ReplayEvent`, `TestEndpoint`, `GetEndpointHealth`)
-- [ ] gRPC client in the API role behind the same TypeScript interface used in-process
-- [ ] Config switch: in-process adapter when `ROLE=all`, gRPC adapter when split
-- [ ] Internal auth via shared-token metadata (mTLS documented as future work)
-- [ ] Deadlines, retries, and error mapping to API error codes
-- [ ] `StreamDeliveryAttempts` server-streaming RPC (tail/debug)
-- [ ] gRPC health checking protocol
-- [ ] Tests for each RPC (in-process and over the wire)
+- [x] `packages/proto`: `worker.proto` and codegen script (`pnpm proto:gen`)
+- [x] gRPC server on the worker role (`ReplayDelivery`, `ReplayEvent`, `TestEndpoint`, `GetEndpointHealth`)
+- [x] gRPC client in the API role behind the same TypeScript interface used in-process
+- [x] Config switch: in-process adapter when `ROLE=all`, gRPC adapter when split
+- [x] Internal auth via shared-token metadata (mTLS documented as future work)
+- [x] Deadlines, retries, and error mapping to API error codes
+- [x] `StreamDeliveryAttempts` server-streaming RPC (tail/debug)
+- [x] gRPC health checking protocol
+- [x] Tests for each RPC (in-process and over the wire)
 
 ## Phase 11: Analytics
 

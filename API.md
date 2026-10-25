@@ -417,6 +417,8 @@ message AttemptSummary { string outcome = 1; int32 response_status = 2; int32 du
 
 **Health:** standard `grpc.health.v1.Health` service is exposed on the worker.
 
+> Phase status: implemented (Phase 10) — codegen via `@grpc/proto-loader`'s bundled `proto-loader-gen-types` bin (no protoc; the npm package of that name is a dependency-confusion placeholder). Server binds `GRPC_PORT` on worker/all; the api role uses the `GrpcWorkerOperations` client adapter behind the same `WorkerOperationsService` interface.
+
 ---
 
 ## 6. Outbound webhook contract (what customers receive)

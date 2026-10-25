@@ -1,0 +1,8 @@
+{
+  "extends": "@hookline/config/tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["generated/**/*.ts"]
+}

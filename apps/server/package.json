@@ -17,6 +17,9 @@
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "9.1.0",
     "@fastify/static": "10.1.7",
+    "@grpc/grpc-js": "1.14.6",
+    "@grpc/proto-loader": "0.8.1",
+    "@hookline/proto": "workspace:*",
     "@hookline/shared": "workspace:*",
     "@nestjs/common": "12.2.0",
     "@nestjs/core": "12.2.0",
