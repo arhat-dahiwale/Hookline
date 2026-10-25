@@ -49,6 +49,7 @@ test('every dashboard page renders with a fresh org', async ({ page }) => {
     { path: '/events', name: 'events', expectTestId: 'events-empty' },
     { path: '/deliveries', name: 'deliveries', expectTestId: 'deliveries-empty' },
     { path: '/api-keys', name: 'api-keys', expectTestId: 'api-keys-empty' },
+    { path: '/analytics', name: 'analytics', expectTestId: 'analytics-empty' },
     // A fresh org always has its creator — members shows the table.
     { path: '/members', name: 'members', expectTestId: 'members-table' },
   ];

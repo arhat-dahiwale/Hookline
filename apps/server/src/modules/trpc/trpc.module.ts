@@ -7,6 +7,7 @@ import { DeliveriesModule } from '../deliveries/index.js';
 import { EndpointsModule } from '../endpoints/index.js';
 import { EventsModule } from '../events/index.js';
 import { SettingsModule } from '../settings/index.js';
+import { AnalyticsModule } from '../analytics/index.js';
 import { TrpcContextFactory } from './trpc-context.factory.js';
 
 /**
@@ -25,6 +26,7 @@ export class TrpcModule {
         ApiKeysModule.forRoot(),
         AuditModule.forRoot(),
         SettingsModule.forRoot(),
+        AnalyticsModule.forRole('api'),
       ],
       providers: [TrpcContextFactory],
       exports: [TrpcContextFactory],

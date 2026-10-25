@@ -37,4 +37,14 @@ export class SettingsRepository {
       .returning();
     return row!;
   }
+
+  /** All org overrides (retention cleanup walks organizations). */
+  async listAll(): Promise<{ organizationId: string; retentionDays: number | null }[]> {
+    return this.database.db
+      .select({
+        organizationId: orgSettings.organizationId,
+        retentionDays: orgSettings.retentionDays,
+      })
+      .from(orgSettings);
+  }
 }

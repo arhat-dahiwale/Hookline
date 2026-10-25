@@ -3,7 +3,7 @@ import { newId } from '@hookline/shared';
 
 import { createHash } from 'node:crypto';
 
-import { and, desc, eq, lt, gt, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, lt, sql } from 'drizzle-orm';
 
 import { DatabaseService } from '../platform/database/database.service.js';
 import { TenantScope } from '../platform/database/tenant-scope.js';
@@ -108,5 +108,38 @@ export class EventsRepository {
       .where(and(...conditions))
       .orderBy(desc(events.createdAt), desc(events.id))
       .limit(limit);
+  }
+
+  /**
+   * Retention cleanup (Phase 11): deletes up to `limit` events older than
+   * the cutoff for one organization. Deliveries and attempts cascade (FKs).
+   * Returns the number of deleted rows.
+   */
+  async deleteOlderThan(organizationId: string, cutoff: Date, limit: number): Promise<number> {
+    const batch = await this.database.db
+      .select({ id: events.id })
+      .from(events)
+      .where(and(eq(events.organizationId, organizationId), lt(events.createdAt, cutoff)))
+      .orderBy(asc(events.createdAt))
+      .limit(limit);
+    if (batch.length === 0) return 0;
+    const deleted = await this.database.db
+      .delete(events)
+      .where(
+        inArray(
+          events.id,
+          batch.map((row) => row.id),
+        ),
+      )
+      .returning({ id: events.id });
+    return deleted.length;
+  }
+
+  /** Distinct org ids with events (retention default pass). */
+  async listDistinctOrgIds(): Promise<string[]> {
+    const rows = await this.database.db
+      .selectDistinct({ organizationId: events.organizationId })
+      .from(events);
+    return rows.map((row) => row.organizationId);
   }
 }

@@ -108,3 +108,8 @@ export const updateOrgSettingsSchema = z
     retentionDays: z.number().int().min(1).max(3650).nullable(),
   })
   .refine((value) => Object.keys(value).length > 0, { message: 'at least one field is required' });
+
+export const statsWindowSchema = z.object({
+  from: z.coerce.date(),
+  to: z.coerce.date(),
+});

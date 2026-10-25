@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  BarChart3,
   KeyRound,
   LayoutDashboard,
   Menu,
@@ -25,6 +26,7 @@ const NAV_ITEMS: { href: string; label: string; icon: React.ReactNode }[] = [
   { href: '/endpoints', label: 'Endpoints', icon: <Webhook aria-hidden /> },
   { href: '/events', label: 'Events', icon: <Zap aria-hidden /> },
   { href: '/deliveries', label: 'Deliveries', icon: <Send aria-hidden /> },
+  { href: '/analytics', label: 'Analytics', icon: <BarChart3 aria-hidden /> },
   { href: '/api-keys', label: 'API keys', icon: <KeyRound aria-hidden /> },
   { href: '/members', label: 'Members', icon: <Users aria-hidden /> },
   { href: '/settings', label: 'Settings', icon: <Settings aria-hidden /> },

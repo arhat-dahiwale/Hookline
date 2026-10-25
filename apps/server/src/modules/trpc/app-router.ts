@@ -5,6 +5,7 @@ import { createDeliveriesRouter } from './deliveries.router.js';
 import { createApiKeysRouter } from './api-keys.router.js';
 import { createAuditRouter } from './audit.router.js';
 import { createSettingsRouter } from './settings.router.js';
+import { createStatsRouter } from './stats.router.js';
 import type { AppConfig } from '../platform/config/app-config.js';
 import { EndpointsRepository, EndpointsService } from '../endpoints/index.js';
 import { DeliveriesRepository, DeliveriesService } from '../deliveries/index.js';
@@ -12,6 +13,7 @@ import { EventsService } from '../events/index.js';
 import { ApiKeysService } from '../api-keys/index.js';
 import { AuditService } from '../audit/index.js';
 import { SettingsService } from '../settings/index.js';
+import { AnalyticsService } from '../analytics/index.js';
 import type { WorkerOperationsService } from '../worker-ops/index.js';
 
 export interface AppRouterDeps {
@@ -24,6 +26,7 @@ export interface AppRouterDeps {
   apiKeysService: ApiKeysService;
   auditService: AuditService;
   settingsService: SettingsService;
+  analyticsService: AnalyticsService;
   getWorkerOperations: () => WorkerOperationsService | null;
 }
 
@@ -36,6 +39,7 @@ export function createAppRouter(deps: AppRouterDeps) {
     apiKeys: createApiKeysRouter(deps),
     audit: createAuditRouter(deps),
     settings: createSettingsRouter(deps),
+    stats: createStatsRouter(deps),
   });
 }
 

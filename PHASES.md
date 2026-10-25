@@ -19,7 +19,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 | 8     | Dashboard features            | [x]    |
 | 9     | Real-time (WebSocket)         | [x]    |
 | 10    | Internal gRPC                 | [x]    |
-| 11    | Analytics                     | [ ]    |
+| 11    | Analytics                     | [x]    |
 | 12    | Observability                 | [ ]    |
 | 13    | Scale topology & chaos demo   | [ ]    |
 | 14    | Testing & CI/CD hardening     | [ ]    |
@@ -210,14 +210,14 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 **Goal:** useful charts and health summaries.
 **Exit criteria:** Overview page shows accurate volume, success rate, and latency matching the raw data.
 
-- [ ] Hourly rollup job writing `delivery_stats_hourly`
-- [ ] Stats queries: overview, time series, per-endpoint breakdown, latency percentiles
-- [ ] tRPC `stats.*` procedures
-- [ ] Recharts: volume over time, success rate, latency p50/p95/p99, status breakdown
-- [ ] Endpoint health panel (breaker state, recent failures, last success)
-- [ ] Time-range selector and auto-refresh
-- [ ] Retention cleanup job (events, attempts) in batches
-- [ ] Tests: rollup correctness, query accuracy
+- [x] Hourly rollup job writing `delivery_stats_hourly`
+- [x] Stats queries: overview, time series, per-endpoint breakdown, latency percentiles
+- [x] tRPC `stats.*` procedures
+- [x] Recharts: volume over time, success rate, latency p50/p95/p99, status breakdown
+- [x] Endpoint health panel (breaker state, recent failures, last success)
+- [x] Time-range selector and auto-refresh
+- [x] Retention cleanup job (events, attempts) in batches
+- [x] Tests: rollup correctness, query accuracy
 
 ## Phase 12: Observability
 

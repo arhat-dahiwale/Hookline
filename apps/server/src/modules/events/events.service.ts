@@ -253,4 +253,14 @@ export class EventsService {
   private idemKey(organizationId: string, idempotencyKey: string): string {
     return `hl:idem:${organizationId}:${idempotencyKey}`;
   }
+
+  /** Retention cleanup passthrough (Phase 11; AnalyticsModule schedules it). */
+  async deleteOlderThan(organizationId: string, cutoff: Date, limit: number): Promise<number> {
+    return this.eventsRepository.deleteOlderThan(organizationId, cutoff, limit);
+  }
+
+  /** Distinct org ids with events (retention default pass, Phase 11). */
+  async listDistinctOrgIds(): Promise<string[]> {
+    return this.eventsRepository.listDistinctOrgIds();
+  }
 }
