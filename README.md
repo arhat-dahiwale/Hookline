@@ -156,16 +156,42 @@ The api serves `/metrics` on `PORT`; a worker role serves `/metrics` on its own
 `PORT` via a standalone HTTP server. Traces are exported over OTLP when
 `OTEL_EXPORTER_OTLP_ENDPOINT` is set (unset = dropped, no outbound calls).
 
-### Run the full demo topology
+### Run the full demo topology (Phase 13, verified)
 
 ```bash
-docker compose up --build --scale api=3 --scale worker=2
+docker compose -f docker-compose.dev.yml down   # free the shared project name/volumes
+docker compose up --build -d --scale api=3 --scale worker=2
 ```
 
-Then open the dashboard through nginx at `http://localhost:8080`, Grafana at `http://localhost:3001`, and Prometheus at `http://localhost:9090`.
+Dashboard `http://localhost:8080` (nginx edge), Grafana `http://localhost:3001`
+(default admin password unless `GRAFANA_ADMIN_PASSWORD` was set when the
+containers were created), Prometheus `http://localhost:9090`. The one-shot
+`migrate` service applies migrations before the apps start; nginx re-resolves
+api/worker replicas per request (Docker DNS) so killed replicas are routed
+around within ~5s.
 
-> The full `docker-compose.yml` topology arrives in Phase 13; the observability
-> stack above can run standalone today.
+**Chaos demo (zero lost events, run 2026-10-26 on 12 CPU / 7.6 GB host,
+3 api + 2 worker replicas):**
+
+```bash
+node scripts/chaos/run-chaos.mjs --duration 150 --kills 4 --tracked-rate 4 --k6-rate 40
+```
+
+Latest actual run: 4 random api/worker containers SIGKILLed during
+~2.5 min of load (k6 mixed workload 40 r/s + tracked stream). Result —
+accepted events 1645/1645 accounted for (464 tracked + 1181 k6), 464/464
+tracked deliveries succeeded, 0 non-terminal, 0 dead after drain, k6
+99.97% checks passed (the 1 failure was a request in flight to a killed
+replica), WebSocket stayed live through nginx with 3290 envelopes received.
+This run also exposed and fixed a real gap: deliveries orphaned in
+`in_progress` by a worker SIGKILL are now healed by the reconciler
+(`requeueOrphanedInProgress`, regression-tested in
+`apps/server/test/int/resilience.spec.ts`).
+
+```bash
+# Standalone load without chaos:
+docker run --rm -v "$(pwd)/scripts/load:/scripts:ro" -v "$(pwd)/scripts/load/out:/out"   -e BASE_URL=http://host.docker.internal:8080 -e API_KEY=hl_live_...   grafana/k6:1.1.0 run --summary-export=/out/summary.json /scripts/ingest.js
+```
 
 ## Common scripts
 

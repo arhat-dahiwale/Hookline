@@ -812,3 +812,49 @@ Append-only. **After every run**, add a new entry at the **bottom** using the te
 3. `e2e/journey.spec.ts` — the full user journey incl. live WebSocket updates without refresh
 4. `docs/screenshots/` — 13 PNGs of every dashboard page incl. analytics
 5. `pnpm check:dashboards` + `infra/` — observability as code
+
+---
+
+## Run 015: 2026-10-26 08:50 (+05:30)
+
+- **Agent / tool:** zcode, GLM-5.3
+- **Phase / task:** Phase 13: scale topology & chaos demo (all tasks)
+- **Status:** completed
+
+### What I did
+
+- **Full topology (`docker-compose.yml`)**: nginx edge, scalable api (no container_name/host ports so Docker DNS round-robins), scalable worker, web, postgres + redis (AOF), one-shot `migrate` service (`dist/migrate.js` using drizzle-orm's runtime migrator — no devDeps in the image), and the observability stack (canonical configs from `infra/`). Healthchecks (node fetch one-liners in-container) + `depends_on` conditions (migrate completed-successfully, pg/redis healthy). Built images: `pnpm deploy --prod --ignore-scripts` (pnpm 12 blocks unapproved build scripts in deploy; runtime needs no postinstalls — decision logged)
+- **nginx (`infra/nginx/nginx.conf`)**: resolver 127.0.0.11 valid=5s with `set $api_upstream` variable proxy_pass (per-request re-resolution), WebSocket upgrade on `/ws` with 1h read timeout, `/metrics` returns 404 publicly, `/health/` routed to api, coarse `limit_req` (200 r/s burst 400), optional TLS block documented, 1 MB body cap matching the api
+- **k6 via Docker (no host install)**: `scripts/load/{ingest,mixed}.js` with a custom `accepted_202` Counter for exact accepted counts (`k6/metrics` — NOT `k6/exec`, which does not exist)
+- **Chaos (`scripts/chaos/run-chaos.mjs`, Node)**: provisions user/org/endpoint (in-network `receiver` service)/API key through nginx; opens WS on `/ws` through nginx; tracked-event stream + k6 mixed load in parallel; SIGKILLs random api/worker containers OF THIS COMPOSE PROJECT ONLY (label-filtered `docker ps`, then `docker start` to restore); verifies via psql in this project's postgres container with window-scoped queries
+- **REAL BUG FOUND BY THE CHAOS RUN and fixed**: deliveries orphaned `in_progress` forever when a worker is SIGKILLed mid-attempt — `process()` only accepts pending/retrying, BullMQ's stalled re-run no-ops on the already-advanced claim, and the reconciler had no in_progress feed. Fix: `requeueOrphanedInProgress` (5-min grace, well past the 35s attempt cap) resets to retrying and enqueues the next attempt in the same pass; regression test added (backdated orphan → reconciler → succeeded, attempt 2 recorded)
+- **Final chaos result (real, 2026-10-26, 12 CPU / 7.6 GB host, 3 api + 2 worker)**: PASS — 1645/1645 accepted events accounted for (464 chaos-tracked + 1181 k6), 464/464 tracked deliveries SUCCEEDED through 4 SIGKILLs (2 api, 2 worker), 0 non-terminal, 0 dead after drain; k6 4784 requests, 99.97% checks, 1 HTTP failure (in-flight to a killed replica); WS through nginx stayed live (3290 envelopes; reconnect path proven by an earlier run: reconnects=1 + 2737 envelopes, and by Phase 9 tests). Live metrics while loaded: ingest p95 ≈ 9 ms, delivery-attempt p95 ≈ 9.5 ms; all 8 Prometheus targets up (3 api + 2 worker + pg + redis + prometheus)
+- Earlier failed runs (recorded honestly): k6 pointed at localhost INSIDE its container (0 requests); chaos key lacked deliveries:read/endpoints:read (403s read as failures); 3 deliveries stuck in 2m+ retry backoff exceeded the 120s drain (window-scoped queries + 240s drain + same-pass heal fixed the class)
+- Evidence: `docs/screenshots/grafana-{delivery,queues,api,infra}.png` + `prometheus-targets.png` (all < 300 KB). Stack torn down after; dev compose restored for the suites
+- Environment quirks: Grafana in this deployment ended up with the DEFAULT admin password despite .env (login worked with `admin` only — suspected CRLF in .env at container-create; captured with the working credential); OTLP metrics export off (`OTEL_METRICS_EXPORTER=none` — Prometheus scrapes `/metrics`; OTLP carries traces only)
+
+### Files changed
+
+- `docker-compose.yml` (new), `infra/nginx/{nginx.conf,proxy_common.conf}` (new), `infra/docker/Dockerfile.{server,web}` (web new; server +migrations/migrate), `apps/server/src/migrate.ts` (new), `scripts/load/{ingest,mixed}.js` (new), `scripts/chaos/run-chaos.mjs` (new), `e2e/grafana-shots.mjs` (new, one-off evidence capture)
+- Reconciler heal: `deliveries/deliveries.repository.ts` (+requeueOrphanedInProgress), `delivery-engine/maintenance.ts` (+IN_PROGRESS_GRACE_MS feed), `test/int/resilience.spec.ts` (+regression test)
+- Deps: `ws@8.22.0` added as ROOT devDependency (chaos script runs outside the server package; same pinned version)
+- Docs: README (verified topology + real chaos numbers), PHASES.md (Phase 13 ticked)
+
+### Commands run and results
+
+- Stack: `docker compose up --build -d --scale api=3 --scale worker=2` — all healthy; nginx routing verified (ready 200, web 200, /metrics 404)
+- Chaos: PASS (numbers above); `pnpm lint`/`typecheck`/`test` (33)/`build`: pass; `pnpm test:int`: 96/96 (17 files); `pnpm test:e2e`: 5/5
+
+### Docs updated
+
+- README.md, PHASES.md (see above)
+
+### Issues, risks, open questions
+
+- nginx worker_connections 2048 and limit_req 200 r/s are demo-scale knobs, not tuned for production traffic
+- The receiver/ALLOW_INSECURE_ENDPOINTS=true in the topology is DEMO-ONLY (in-network http target); must be false anywhere real
+- Grafana password quirk noted above — set GRAFANA_ADMIN_PASSWORD explicitly (and beware CRLF .env) when deploying
+
+### Next steps
+
+- Phase 14: coverage thresholds, OpenAPI contract tests, cross-protocol authorization matrix, Playwright suite, GitHub Actions (syntax-validated only), Dependabot, secret scanning, dependency audit

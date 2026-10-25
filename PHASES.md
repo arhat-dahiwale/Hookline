@@ -21,7 +21,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 | 10    | Internal gRPC                 | [x]    |
 | 11    | Analytics                     | [x]    |
 | 12    | Observability                 | [ ]    |
-| 13    | Scale topology & chaos demo   | [ ]    |
+| 13    | Scale topology & chaos demo   | [x]    |
 | 14    | Testing & CI/CD hardening     | [ ]    |
 | 15    | Docs, polish & launch         | [ ]    |
 
@@ -239,14 +239,14 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 **Goal:** prove it scales and survives.
 **Exit criteria:** the demo script in README runs end to end with zero lost events.
 
-- [ ] nginx config: upstream via Docker DNS resolver, WebSocket upgrade, long timeouts, TLS option, coarse rate limit
-- [ ] `docker-compose.yml` full topology (nginx, api x3, worker x2, postgres, redis, otel, prometheus, grafana)
-- [ ] Container healthchecks and `depends_on` conditions
-- [ ] Migration job container (runs once before app start)
-- [ ] k6 load scripts (ingestion, mixed workloads)
-- [ ] Chaos script: kill random api/worker containers during load, then verify counts
-- [ ] Verification query/script: accepted events == terminal-state deliveries
-- [ ] Record results and screenshots for README
+- [x] nginx config: upstream via Docker DNS resolver, WebSocket upgrade, long timeouts, TLS option, coarse rate limit
+- [x] `docker-compose.yml` full topology (nginx, api x3, worker x2, postgres, redis, otel, prometheus, grafana)
+- [x] Container healthchecks and `depends_on` conditions
+- [x] Migration job container (runs once before app start)
+- [x] k6 load scripts (ingestion, mixed workloads)
+- [x] Chaos script: kill random api/worker containers during load, then verify counts
+- [x] Verification query/script: accepted events == terminal-state deliveries
+- [x] Record results and screenshots for README
 
 ## Phase 14: Testing & CI/CD hardening
 

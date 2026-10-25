@@ -21,7 +21,10 @@ COPY packages/ packages/
 COPY apps/ apps/
 RUN pnpm --filter @hookline/server... run build
 # Prune to production deps into a self-contained deployable dir.
-RUN pnpm --filter @hookline/server deploy --prod /out
+# --ignore-scripts: the deployed tree only RUNS node dist (no esbuild etc.);
+# deploy's re-install otherwise fails on pnpm's unapproved-build-scripts
+# policy (msgpackr-extract falls back to pure JS — fine at runtime).
+RUN pnpm --filter @hookline/server deploy --prod --ignore-scripts /out
 
 # --- runner -------------------------------------------------------------------
 FROM node:24-alpine AS runner
@@ -30,6 +33,8 @@ WORKDIR /app
 COPY --from=build /out/package.json ./package.json
 COPY --from=build /out/node_modules ./node_modules
 COPY --from=build /repo/apps/server/dist ./dist
+# SQL migrations for the one-shot migrate service (dist/migrate.js applies them).
+COPY --from=build /repo/apps/server/drizzle ./drizzle
 EXPOSE 4000
 # Runs as the node user from the base image
 USER node
