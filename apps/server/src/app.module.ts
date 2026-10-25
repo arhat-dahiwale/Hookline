@@ -13,6 +13,7 @@ import { EventsModule } from './modules/events/index.js';
 import { HealthModule } from './modules/health/index.js';
 import { PlatformModule } from './modules/platform/index.js';
 import { RealtimeModule } from './modules/realtime/index.js';
+import { WorkerOpsModule } from './modules/worker-ops/index.js';
 import { TrpcModule } from './modules/trpc/index.js';
 import type { AppConfig } from './modules/platform/index.js';
 
@@ -51,6 +52,8 @@ export class AppModule {
         PlatformModule.withConfig(config),
         // Workers publish bus events to Redis; APIs fan out to WS sockets.
         RealtimeModule.forRoot(),
+        // Adapter selection: gRPC client on api, in-process on worker/all.
+        WorkerOpsModule.forRole(role),
         ...httpModules,
         ...workerModules,
       ],

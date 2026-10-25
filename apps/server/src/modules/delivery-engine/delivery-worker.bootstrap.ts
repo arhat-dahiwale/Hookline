@@ -5,9 +5,9 @@ import { DeliveryProcessor } from './delivery-processor.js';
 import { MaintenanceService } from './maintenance.js';
 
 /**
- * Starts BullMQ workers only in the roles that process deliveries:
- * `worker` and `all`. The `api` role loads the module for enqueueing but
- * never starts a processor.
+ * Starts BullMQ workers and the internal gRPC server only in the roles that
+ * execute deliveries: `worker` and `all`. The `api` role loads the module for
+ * enqueueing but never starts a processor.
  */
 @Injectable()
 export class DeliveryWorkerBootstrap implements OnApplicationBootstrap {

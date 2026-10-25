@@ -2,5 +2,41 @@
   "name": "@hookline/proto",
   "version": "0.1.0",
   "private": true,
-  "description": "Protobuf definitions and generated code for Hookline internal gRPC (Phase 10)"
+  "description": "Protobuf definitions and generated code for Hookline internal gRPC (Phase 10)",
+  "dependencies": {
+    "@grpc/proto-loader": "0.8.1"
+  },
+  "devDependencies": {
+    "@grpc/grpc-js": "1.14.6",
+    "@types/node": "24.19.2"
+  },
+  "scripts": {
+    "proto:gen": "node scripts/generate.mjs",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "exports": {
+    "./protos/*": "./protos/*",
+    "./generated/*": {
+      "types": "./dist/*.d.ts",
+      "default": "./dist/*.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "generated/*": [
+        "generated/*.ts",
+        "generated/*/index.ts"
+      ],
+      "protos/*": [
+        "protos/*"
+      ]
+    }
+  },
+  "main": "./dist/hookline/worker/v1/WorkerService.js",
+  "types": "./dist/hookline/worker/v1/WorkerService.d.ts",
+  "files": [
+    "dist",
+    "protos"
+  ]
 }

@@ -15,6 +15,7 @@ export interface TestEnv {
   ENCRYPTION_KEY: string;
   INTERNAL_GRPC_TOKEN: string;
   ALLOW_INSECURE_ENDPOINTS: string;
+  WORKER_GRPC_URL: string;
 }
 
 let cached: TestEnv | undefined;

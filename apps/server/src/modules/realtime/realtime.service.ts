@@ -1,4 +1,4 @@
-import { Injectable, type OnApplicationShutdown, type OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, type OnApplicationShutdown, type OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import Redis from 'ioredis';
 
@@ -27,6 +27,7 @@ const ORG_CHANNEL_PREFIX = 'hl:org:';
  */
 @Injectable()
 export class RealtimeService implements OnApplicationShutdown, OnModuleInit {
+  private readonly logger = new Logger(RealtimeService.name);
   private readonly sockets = new Map<object, FanoutTarget>();
   /** Org ids with at least one local socket → we subscribe on Redis. */
   private readonly orgRefCounts = new Map<string, number>();
@@ -144,9 +145,23 @@ export class RealtimeService implements OnApplicationShutdown, OnModuleInit {
     return true;
   }
 
-  /** Publishes an envelope to the org channel (workers and APIs call this). */
+  /**
+   * Publishes an envelope to the org channel (workers and APIs call this).
+   * Best-effort: during shutdown (or a Redis blip) a missed fan-out is safe —
+   * clients resubscribe and backfill via deliveries.since. Never let the
+   * publish rejection escape as an unhandled rejection.
+   */
   async publish(organizationId: string, message: WsEnvelope): Promise<void> {
-    await this.bridge().publish(`${ORG_CHANNEL_PREFIX}${organizationId}`, JSON.stringify(message));
+    try {
+      await this.bridge().publish(
+        `${ORG_CHANNEL_PREFIX}${organizationId}`,
+        JSON.stringify(message),
+      );
+    } catch (error) {
+      this.logger.debug(
+        `realtime publish skipped (${message.type}): ${error instanceof Error ? error.message : error}`,
+      );
+    }
   }
 
   private bridge(): Redis {

@@ -147,6 +147,43 @@ export class DeliveriesRepository {
       .orderBy(asc(deliveryAttempts.attemptNumber));
   }
 
+  /** All attempts for an endpoint's deliveries (gRPC attempt stream). */
+  async listAttemptsForEndpoint(
+    scope: TenantScope,
+    endpointId: string,
+  ): Promise<DeliveryAttemptRow[]> {
+    return this.database.db
+      .select({ attempt: deliveryAttempts })
+      .from(deliveryAttempts)
+      .innerJoin(deliveries, eq(deliveryAttempts.deliveryId, deliveries.id))
+      .where(
+        and(scope.whereColumn(deliveries.organizationId), eq(deliveries.endpointId, endpointId)),
+      )
+      .orderBy(asc(deliveryAttempts.startedAt))
+      .then((rows) => rows.map((row) => row.attempt));
+  }
+
+  /** Attempts started after a timestamp (streaming cursor). */
+  async listAttemptsForEndpointSince(
+    scope: TenantScope,
+    endpointId: string,
+    since: Date,
+  ): Promise<DeliveryAttemptRow[]> {
+    return this.database.db
+      .select({ attempt: deliveryAttempts })
+      .from(deliveryAttempts)
+      .innerJoin(deliveries, eq(deliveryAttempts.deliveryId, deliveries.id))
+      .where(
+        and(
+          scope.whereColumn(deliveries.organizationId),
+          eq(deliveries.endpointId, endpointId),
+          gt(deliveryAttempts.startedAt, since),
+        ),
+      )
+      .orderBy(asc(deliveryAttempts.startedAt))
+      .then((rows) => rows.map((row) => row.attempt));
+  }
+
   /** Reconciler feed: pending deliveries older than the grace period. */
   async findStalePending(olderThan: Date, limit: number): Promise<DeliveryRow[]> {
     return this.database.db

@@ -12,7 +12,7 @@ import { EventsService } from '../events/index.js';
 import { ApiKeysService } from '../api-keys/index.js';
 import { AuditService } from '../audit/index.js';
 import { SettingsService } from '../settings/index.js';
-import type { WorkerOperations } from '../delivery-engine/index.js';
+import type { WorkerOperationsService } from '../worker-ops/index.js';
 
 export interface AppRouterDeps {
   config: AppConfig;
@@ -24,7 +24,7 @@ export interface AppRouterDeps {
   apiKeysService: ApiKeysService;
   auditService: AuditService;
   settingsService: SettingsService;
-  getWorkerOperations: () => WorkerOperations | null;
+  getWorkerOperations: () => WorkerOperationsService | null;
 }
 
 /** Root tRPC router (API.md section 3). Routers nest under their API names. */

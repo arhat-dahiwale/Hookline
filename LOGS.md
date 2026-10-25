@@ -631,3 +631,47 @@ Append-only. **After every run**, add a new entry at the **bottom** using the te
 ### Next steps
 
 - Phase 10: internal gRPC (worker.proto + proto-loader-gen-types, ReplayDelivery/ReplayEvent/TestEndpoint/GetEndpointHealth/StreamDeliveryAttempts, x-internal-token, deadlines, health protocol, cross-process wire test)
+
+---
+
+## Run 012: 2026-10-25 08:00 (+05:30)
+
+- **Agent / tool:** zcode, GLM-5.3
+- **Phase / task:** Phase 10: internal gRPC (all tasks)
+- **Status:** completed
+
+### What I did
+
+- **`packages/proto`:** `worker.proto` (already drafted) + standard `grpc.health.v1` `health.proto`; codegen via `pnpm proto:gen`. **Important discovery:** the npm package `proto-loader-gen-types@1.0.0` is a dependency-confusion PLACEHOLDER (not the real tool) — the real generator ships inside `@grpc/proto-loader` as its bundled bin; `scripts/generate.mjs` spawns that. The proto package now builds its own `dist` declarations (rootDir=generated) and exposes `./protos/*` (runtime) + `./generated/*` (types via exports with a `types` condition pointing at `dist/*.d.ts`)
+- **`worker-ops` module (all roles):** `WorkerOperationsService` interface (replayDelivery with optional wait-for-first-attempt, replayEvent, testEndpoint, getEndpointHealth, streamDeliveryAttempts async generator tail). Two interchangeable adapters behind the `WORKER_OPERATIONS` DI token: `InProcessWorkerOperations` (worker/all, delegating to DeliveriesService/EventsService/EndpointsRepository/engine) and `GrpcWorkerOperations` (api, grpc-js client with per-call deadlines 15s/35s, one retry on UNAVAILABLE, error mapping per API.md section 5). `TrpcContextFactory.getWorkerOperations()` resolves the active adapter — `endpoints.test` works over the wire on the api role
+- **Server:** `WorkerGrpcServer` binds `GRPC_PORT` on worker/all (started by `WorkerOpsBootstrap`), checks `x-internal-token` on every RPC (UNAUTHENTICATED otherwise), maps AppError codes → gRPC statuses, implements `StreamDeliveryAttempts` (server-streaming; org-verified, poll-based tail bounded to 120s), and serves `grpc.health.v1.Health` Check/Watch (SERVING)
+- **Key runtime lessons (all found via the wire test):** proto-loader definitions are FLAT keys (`d['hookline.worker.v1.WorkerService']` is the definition object — `addService` takes it directly); client CONSTRUCTORS require `grpc.loadPackageDefinition(loaded)`; with `keepCase:false` the wire objects are camelCase at runtime (snake_case reads silently return undefined); server emits CJS so `import.meta` is banned (`createRequire(__filename)`); a client-initiated stream abort surfaces as CANCELLED — the adapter treats its own signal as a clean end
+- **Tests (8 new):** `grpc-wire.spec.ts` (4): spawns a REAL `node dist/main.js` ROLE=worker child (port-wait, stdout/stderr piped) and runs health, wrong-token → UNAUTHENTICATED, testEndpoint + replayEvent + replayDelivery + getEndpointHealth over the wire (the child delivers to the receiver), and `streamDeliveryAttempts` streaming live attempt events. `worker-ops.spec.ts` (4): the same operations through the in-process adapter, including foreign-org NOT_FOUND
+- Hardened `RealtimeService.publish` to be best-effort (during-shutdown publishes no longer escape as unhandled rejections — realtime is lossy by design)
+
+### Files changed
+
+- `packages/proto/**` (health.proto, generate.mjs, tsconfigs, package exports, dist build), root `pnpm proto:gen`
+- `apps/server/src/modules/worker-ops/**` (new module: interface, in-process + gRPC adapters, server, bootstrap), `delivery-engine/delivery-worker.bootstrap.ts` (reverted to queue-only), `app.module.ts` (WorkerOpsModule.forRole), `trpc/trpc-context.factory.ts` + `trpc/endpoints.router.ts` + `trpc/app-router.ts` (adapter resolution), `deliveries/deliveries.repository.ts` (endpoint attempt queries), `realtime/realtime.service.ts` (best-effort publish)
+- Deps: `@grpc/grpc-js@1.14.6`, `@grpc/proto-loader@0.8.1` (server); `@hookline/proto` workspace dep
+- Tests: `test/int/grpc-wire.spec.ts`, `test/int/worker-ops.spec.ts`, `test/int/test-env.ts` (+WORKER_GRPC_URL)
+- Docs: ARCHITECTURE.md (worker-ops row), API.md (gRPC phase status), PHASES.md (Phase 10 ticked)
+
+### Commands run and results
+
+- `pnpm lint` / `pnpm typecheck` / `pnpm build`: pass (6 turbo tasks)
+- `pnpm test`: pass (33 unit); `pnpm test:int`: pass (82 integration, 13 files, 0 unhandled errors)
+- `pnpm test:e2e`: pass (5/5)
+
+### Docs updated
+
+- ARCHITECTURE.md, API.md, PHASES.md (see above)
+
+### Issues, risks, open questions
+
+- mTLS remains future work per API.md (token auth + network isolation only)
+- StreamDeliveryAttempts polls every 500ms server-side (bounded 120s) — event-driven tail via the bus would be tighter; fine for debug/tail use
+
+### Next steps
+
+- Phase 11: analytics (hourly rollups with raw-data correctness tests, stats queries + tRPC stats router, Recharts dashboards, endpoint health panel, retention cleanup in batches)

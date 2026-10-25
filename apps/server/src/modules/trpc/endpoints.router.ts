@@ -12,7 +12,7 @@ import {
 
 import type { TrpcContext } from './trpc.js';
 import { minRole, orgProcedure, router } from './trpc.js';
-import { WorkerOperations } from '../delivery-engine/index.js';
+import type { WorkerOperationsService } from '../worker-ops/index.js';
 import { EndpointsRepository, EndpointsService, presentEndpoint } from '../endpoints/index.js';
 import { DeliveriesRepository } from '../deliveries/index.js';
 import { endpointUrlBlocked, unavailable } from '../platform/errors/app-error.js';
@@ -40,8 +40,8 @@ export function createEndpointsRouter(deps: {
   endpointsService: EndpointsService;
   endpointsRepository: EndpointsRepository;
   deliveriesRepository: DeliveriesRepository;
-  /** Resolves lazily: null when the worker role is not loaded (test send). */
-  getWorkerOperations: () => WorkerOperations | null;
+  /** Resolves the active adapter: in-process or gRPC (Phase 10). */
+  getWorkerOperations: () => WorkerOperationsService | null;
 }) {
   const { config, endpointsService, endpointsRepository, deliveriesRepository } = deps;
 

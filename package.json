@@ -20,7 +20,8 @@
     "format": "prettier --write .",
     "prepare": "husky",
     "test:e2e": "playwright test",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "proto:gen": "pnpm --filter @hookline/proto proto:gen"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",

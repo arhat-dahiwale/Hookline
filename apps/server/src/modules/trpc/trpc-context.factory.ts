@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 
 import { AuthService } from '../auth/index.js';
-import { WorkerOperations } from '../delivery-engine/index.js';
+import { WORKER_OPERATIONS, type WorkerOperationsService } from '../worker-ops/index.js';
 import type { TrpcMeta } from './trpc.js';
 
 /**
@@ -30,12 +30,12 @@ export class TrpcContextFactory {
   }
 
   /**
-   * Worker operations are only present when the engine module is loaded
-   * (ROLE=all/worker); the api role gets the gRPC adapter in Phase 10.
+   * The active worker-operations adapter: in-process on worker/all, the gRPC
+   * client on the api role (Phase 10). Both satisfy WorkerOperationsService.
    */
-  getWorkerOperations(): WorkerOperations | null {
+  getWorkerOperations(): WorkerOperationsService | null {
     try {
-      return this.moduleRef.get(WorkerOperations, { strict: false });
+      return this.moduleRef.get(WORKER_OPERATIONS, { strict: false });
     } catch {
       return null;
     }
