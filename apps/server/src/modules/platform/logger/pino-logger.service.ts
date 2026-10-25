@@ -2,6 +2,8 @@ import { Inject, Injectable, type LoggerService } from '@nestjs/common';
 
 import pino from 'pino';
 
+import { context, trace } from '@opentelemetry/api';
+
 import { APP_CONFIG, type AppConfig } from '../config/app-config.js';
 import { getCurrentRequestContext } from './request-context.js';
 
@@ -30,7 +32,17 @@ export class PinoLoggerService implements LoggerService {
   constructor(@Inject(APP_CONFIG) config: Pick<AppConfig, 'LOG_LEVEL'>) {
     this.logger = pino({
       level: config.LOG_LEVEL,
-      mixin: () => ({ ...(getCurrentRequestContext() ?? {}) }),
+      mixin: () => ({
+        ...(getCurrentRequestContext() ?? {}),
+        // Log correlation (ARCHITECTURE.md 7.3): the active span's ids on
+        // every line, so dashboard logs join traces.
+        ...(() => {
+          const span = trace.getSpan(context.active());
+          if (!span) return {};
+          const { traceId, spanId, traceFlags } = span.spanContext();
+          return { traceId, spanId, traceFlags };
+        })(),
+      }),
       redact: { paths: REDACT_PATHS, censor: '[redacted]' },
       base: undefined,
     });

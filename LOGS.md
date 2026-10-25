@@ -712,3 +712,50 @@ Append-only. **After every run**, add a new entry at the **bottom** using the te
 ### Next steps
 
 - Phase 12: observability (OTel traces API→queue→worker→HTTP, Prometheus metrics per ARCHITECTURE 7.3, collector/prometheus/grafana provisioning under infra/, alert rules, trace_id in logs)
+
+---
+
+## Run 014: 2026-10-26 07:20 (+05:30)
+
+- **Agent / tool:** zcode, GLM-5.3
+- **Phase / task:** Phase 12 close-out: observability (final tasks) + SSRF security fix
+- **Status:** completed
+
+### What I did
+
+- **HTTP duration metric:** `hookline_http_request_duration_seconds{route,method,status}` recorded in a Fastify `onResponse` hook using `reply.elapsedTime`; the route label is the route TEMPLATE (`/v1/events/:eventId`), unmatched requests collapse to `unmatched` — proven by `test/int/observability.spec.ts` (3 tests: /metrics contract listing every ARCHITECTURE 7.3 metric, templated labels, no raw paths/IDs ever in labels)
+- **Dashboards:** added Queues (queue depth by state, backlog, failed, dispatch lag, attempts/s, WS connections) and Infrastructure (pg connections/cache hit, redis memory/clients/hit rate/evictions, event loop lag) — all four provision from `infra/grafana/dashboards/`. New `pnpm check:dashboards` (scripts/check-dashboards.mjs) fails if any dashboard references a `hookline_*` metric not registered in MetricsService (histogram `_bucket/_sum/_count` suffixes normalized) and if a registered metric is missing from ARCHITECTURE 7.3; verified it fails on a bogus name
+- **promtool:** config + alert rules validated via `docker run --rm --entrypoint promtool` (Git Bash needed `MSYS_NO_PATHCONV=1` and `//`-prefixed container paths): config valid, 4 rules valid
+- **Stack boot verification (one time, real):** ran api (ROLE=api :4000) + worker (ROLE=worker :4100) as host processes with `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318`, plus the observability compose with the new `docker-compose.observability.local.yml` overlay (host.docker.internal targets). VERIFIED: all 5 Prometheus targets up (hookline-api, hookline-worker, postgres-exporter, redis-exporter, prometheus); `up{job=...}=1` for api+worker; `hookline_queue_depth` and `hookline_ws_connections` queryable; Grafana provisioned BOTH datasources and ALL FOUR dashboards (checked via API); Tempo ready and a TraceQL search returned a stored `hookline-api` trace (root span GET from a health request); collector debug exporter logged spans. Then everything torn down (node processes stopped, `compose down`, 0 observability containers left)
+- **Two real bugs fixed to make that verification pass:** (1) `WorkerMetricsServer` never started on the worker role — the cached ObservabilityModule was pinned to the `api` variant because feature modules call `forRole('api')` while their arrays are built BEFORE AppModule's `forRole(role)` runs; fix: always provide the server, gate on `config.ROLE` inside the hook. (2) Tempo 2.7 removed `-mode=single-tenant` AND needs an explicit `-config.file` (without it, built-in defaults → "unknown backend"); fixed compose command + `backend: local` confirmed present
+- **SECURITY FIX (the run's key finding):** the connect-time SSRF gate was IPv4-blind. `isBlockedIp` in packages/shared had a regex with MISSING BACKSLASHES (`/^d{1,3}(.d{1,3}){3}$/` — matches nothing real), so every private IPv4 range returned false on the connect-time path; `validateEndpointUrl`'s own correct copy masked it at creation time. Additionally Node's `net.connect` SKIPS custom lookups for IP-literal hosts, so literals bypassed the lookup guard entirely. Fixes: corrected regex (+ regression tests with direct `isBlockedIp` assertions for 15 blocked + 6 allowed addresses); fixed IPv4-mapped IPv6 expansion (dotted-quad tail `::ffff:127.0.0.1` split into two 16-bit groups — the mapped detection previously looked at the wrong indexes); added a PRE-FLIGHT literal check in `SsrfHttpClient.sendInternal` (brackets stripped, URL parser normalizes decimal/hex/octal spellings — proven in the test). `test/int/ssrf-connect.spec.ts` (6 tests) proves with ALLOW_INSECURE_ENDPOINTS OFF: 127.0.0.1 (receiver never contacted), 10.x/172.16.x/192.168.x, 169.254.169.254, [::1], [::ffff:127.0.0.1], the alternate spellings 2130706433/0x7f.0.0.1/0177.0.0.1, and `localhost` (hostname resolving private via the lookup path)
+- **Outbound-path audit (all call sites):** exactly TWO `SsrfHttpClient` constructions, both `allowInsecure: config.ALLOW_INSECURE_ENDPOINTS` — `delivery-engine/delivery-processor.ts:74` (every delivery attempt; ingestion fan-out AND all replays flow through it) and `delivery-engine/test-endpoint.ts:33` (WorkerOperations.testEndpoint → tRPC `endpoints.test` + REST `POST /v1/endpoints/:id/test`). One undici import in the whole tree (the guarded client). No other outbound HTTP exists
+- Debug artifacts (`apps/server/trace-dump.json`, `tr.log`, `span-names.json`) deleted; nothing tracked in git
+
+### Files changed
+
+- `packages/shared/src/ssrf.ts` (regex + IPv6 mapped expansion), `packages/shared/src/ssrf.spec.ts` (+3 regression describes)
+- `apps/server/src/modules/delivery-engine/ssrf-http-client.ts` (pre-flight literal gate), `observability/{observability.routes.ts (onResponse hook),observability.module.ts (provider fix)}`, `test/int/{observability,ssrf-connect}.spec.ts` (new)
+- `infra/`: `+docker-compose.observability.local.yml`, `+prometheus.local-verify.yml`, `+grafana/dashboards/hookline-{queues,infra}.json`, tempo/grafana compose fixes
+- `scripts/check-dashboards.mjs` (new), root `check:dashboards` script, `eslint.config.mjs` (URL global for scripts)
+- Docs: ARCHITECTURE.md (7.3 status + manual-span note), README.md (observability section), PHASES.md (Phase 12 ticked)
+
+### Commands run and results
+
+- `pnpm check:dashboards`: pass (11 metrics; fails on bogus reference — proven)
+- promtool `check config` + `check rules`: SUCCESS (4 rules)
+- `pnpm lint` / `pnpm typecheck`: pass; `pnpm test`: pass (36 unit incl. new shared guards); `pnpm test:int`: pass (95 integration, 17 files); `pnpm build`: pass; `pnpm test:e2e`: pass (5/5)
+- Stack boot verification: as described above (all real, one time, torn down)
+
+### Docs updated
+
+- ARCHITECTURE.md, README.md, PHASES.md (see above)
+
+### Issues, risks, open questions
+
+- Worker-role traces: the worker produced no spans during the boot verification (no deliveries were running); worker spans are covered by the tracing.spec.ts integration test instead — stated plainly
+- Grafana password defaults to `admin` unless `GRAFANA_ADMIN_PASSWORD` is set in the compose environment (the repo-root .env is NOT read by compose project dirs)
+
+### Next steps
+
+- AUTONOMOUS RUN SUMMARY (Phases 7-12) below, then Phase 13

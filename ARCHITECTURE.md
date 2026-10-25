@@ -225,6 +225,8 @@ On `SIGTERM`: stop accepting HTTP and WebSocket connections (API) or stop fetchi
 
 **Dashboards** (Grafana, provisioned as code): API overview, Delivery engine, Queues, Infrastructure (Postgres and Redis exporters).
 
+> Phase status: implemented (Phase 12). Metrics served at `/metrics` (Fastify route on api, standalone HTTP server on worker, port `PORT`); OTel SDK with auto-instrumentations plus two MANUAL spans — `ingest.event` on the API and `outbound.webhook` in the SSRF client — because the HTTP auto-instrumentation's server span is not the ACTIVE context parent on this Node version (Node 24), so queue propagation is anchored on the explicit ingest span. Trace context (W3C) travels in BullMQ job data; the worker continues the trace. `traceId`/`spanId` are mixed into every Pino log line. Provisioning lives in `infra/` (collector, Tempo, Prometheus + alert rules, Grafana datasources/dashboards; `pnpm check:dashboards` fails on metric-name drift).
+
 ### 7.4 In-process event bus
 
 NestJS event emitter, used for same-process reactions (for example, `delivery.attempt.completed` triggers the Redis publisher and the breaker update). It is **not** a delivery mechanism. Anything that must survive a crash goes through Postgres or BullMQ.

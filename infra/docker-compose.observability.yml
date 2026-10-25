@@ -1,0 +1,61 @@
+# Observability stack (Phase 12): OTel Collector, Tempo, Prometheus, Grafana
+# and the infra exporters. Run from the repo root with the dev compose:
+#   docker compose -f infra/docker-compose.observability.yml up -d
+# Services bind container-network names from the Phase 13 topology; for local
+# dev, point OTEL_EXPORTER_OTLP_ENDPOINT at localhost:4318 and add the host
+# gateway network as needed.
+name: hookline-observability
+
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.130.0
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    command: ['--config=/etc/otelcol-contrib/config.yaml']
+    ports:
+      - '4317:4317'
+      - '4318:4318'
+
+  tempo:
+    image: grafana/tempo:2.7.0
+    # Single-tenant is the default (multitenancy.enabled=false); 2.7 removed
+    # the old -mode=single-tenant flag. The config path must be explicit —
+    # without it Tempo boots its built-in defaults (empty backend).
+    command: ['-config.file=/etc/tempo/tempo.yaml']
+    volumes:
+      - ./tempo.yaml:/etc/tempo/tempo.yaml:ro
+    ports:
+      - '3200:3200'
+      - '4317' # receiver used by the collector through the compose network
+
+  prometheus:
+    image: prom/prometheus:v3.4.0
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./alerts.yml:/etc/prometheus/alerts.yml:ro
+    ports:
+      - '9090:9090'
+
+  grafana:
+    image: grafana/grafana:12.0.0
+    environment:
+      GRAFANA_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - '3001:3000'
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.17.1
+    environment:
+      DATA_SOURCE_NAME: postgresql://hookline:change-me@postgres:5432/hookline?sslmode=disable
+    ports:
+      - '9187:9187'
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.71.0
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    ports:
+      - '9121:9121'

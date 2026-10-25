@@ -1,0 +1,46 @@
+# Prometheus scrape configuration (Hookline demo topology).
+# Low-cardinality labels only (ARCHITECTURE.md 7.3).
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+scrape_configs:
+  # The api role exposes /metrics on PORT (4000); scale x3 via DNS.
+  - job_name: hookline-api
+    dns_sd_configs:
+      - names:
+          - api
+        port: 4000
+        type: A
+        refresh_interval: 5s
+    metrics_path: /metrics
+
+  # The worker role serves /metrics on its own PORT (4100 in compose).
+  - job_name: hookline-worker
+    dns_sd_configs:
+      - names:
+          - worker
+        port: 4100
+        type: A
+        refresh_interval: 5s
+    metrics_path: /metrics
+
+  - job_name: postgres
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+
+  - job_name: redis
+    static_configs:
+      - targets: ['redis-exporter:9121']
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']

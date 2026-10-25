@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 
 import { RedisService } from '../platform/redis/redis.service.js';
+import { MetricsService } from '../observability/index.js';
 import { EndpointsRepository } from '../endpoints/index.js';
 
 const WINDOW_SIZE = 20;
@@ -47,6 +48,7 @@ export class CircuitBreakerService {
     private readonly redis: RedisService,
     private readonly endpointsRepository: EndpointsRepository,
     private readonly emitter: EventEmitter2,
+    private readonly metrics: MetricsService,
   ) {}
 
   private async read(endpointId: string): Promise<BreakerRecord> {
@@ -232,6 +234,7 @@ export class CircuitBreakerService {
       });
       // Fire-and-forget: the realtime bridge fans this out to WebSocket
       // subscribers. Never blocks or fails the delivery path.
+      this.metrics.breakerTransitions.inc({ to: state });
       const endpoint = await this.endpointsRepository.findByIdUnscoped(endpointId);
       if (endpoint) {
         void this.emitter.emit('endpoint.health.changed', {

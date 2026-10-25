@@ -122,6 +122,40 @@ untrusted origins).
 > services on 5432/6379. `DATABASE_URL` and `REDIS_URL` in `.env` already
 > point there.
 
+### Observability stack (Phase 12)
+
+The collector, Tempo, Prometheus (with alert rules), Grafana and the
+Postgres/Redis exporters are provisioned as code under `infra/`:
+
+```bash
+# Canonical stack (expects the Phase 13 compose network: api/worker/postgres/redis)
+docker compose -f infra/docker-compose.observability.yml up -d
+
+# Local verification against host processes + the dev compose (run once,
+# verified 2026-10-25: Prometheus scraped api+worker, all 4 dashboards and
+# both datasources provisioned in Grafana, traces reached Tempo)
+HOOKLINE_PG_PASSWORD=<from .env> \
+  docker compose -f infra/docker-compose.observability.yml \
+                 -f infra/docker-compose.observability.local.yml up -d
+```
+
+Grafana lands at `http://localhost:3001` (admin password from
+`GRAFANA_ADMIN_PASSWORD`, default `admin`), Prometheus at `http://localhost:9090`,
+Tempo at `http://localhost:3200`. Dashboards: Hookline API, Delivery Engine,
+Queues, Infrastructure.
+
+```bash
+pnpm check:dashboards   # fails if a dashboard references an unregistered metric
+# Validate Prometheus config + alert rules without installing anything:
+MSYS_NO_PATHCONV=1 docker run --rm --entrypoint promtool \
+  -v "$(pwd)/infra:/etc/prometheus:ro" prom/prometheus:v3.4.0 \
+  check config //etc/prometheus/prometheus.yml
+```
+
+The api serves `/metrics` on `PORT`; a worker role serves `/metrics` on its own
+`PORT` via a standalone HTTP server. Traces are exported over OTLP when
+`OTEL_EXPORTER_OTLP_ENDPOINT` is set (unset = dropped, no outbound calls).
+
 ### Run the full demo topology
 
 ```bash
@@ -129,6 +163,9 @@ docker compose up --build --scale api=3 --scale worker=2
 ```
 
 Then open the dashboard through nginx at `http://localhost:8080`, Grafana at `http://localhost:3001`, and Prometheus at `http://localhost:9090`.
+
+> The full `docker-compose.yml` topology arrives in Phase 13; the observability
+> stack above can run standalone today.
 
 ## Common scripts
 

@@ -1,0 +1,12 @@
+# Grafana dashboard provisioning (as code).
+apiVersion: 1
+
+providers:
+  - name: hookline
+    orgId: 1
+    folder: Hookline
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards

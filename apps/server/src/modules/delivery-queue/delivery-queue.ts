@@ -4,6 +4,7 @@ import { Queue } from 'bullmq';
 import { jitteredDelayForAttempt } from './backoff.js';
 import { APP_CONFIG, type AppConfig } from '../platform/config/app-config.js';
 import { RedisService } from '../platform/redis/redis.service.js';
+import { serializeTraceContext } from '../observability/trace-context.js';
 
 export const DELIVERY_QUEUE_NAME = 'delivery';
 export const MAINTENANCE_QUEUE_NAME = 'maintenance';
@@ -12,6 +13,8 @@ export const BULLMQ_PREFIX = 'hl:bull';
 export interface DeliveryJobData {
   deliveryId: string;
   organizationId: string;
+  /** W3C trace-context carrier (JSON) from the enqueueing API request. */
+  traceContext?: string;
 }
 
 /**
@@ -56,11 +59,14 @@ export class DeliveryQueue implements OnApplicationShutdown {
   ): Promise<void> {
     const nextAttempt = delivery.attemptCount + 1;
     const delay = options.delayMs ?? jitteredDelayForAttempt(nextAttempt);
+    // Trace context travels in job data (ARCHITECTURE.md 7.3): the worker
+    // continues the API request's trace across the queue boundary.
     await this.queue.add(
       'deliver',
       {
         deliveryId: delivery.id,
         organizationId: delivery.organizationId,
+        traceContext: serializeTraceContext(),
       },
       {
         jobId: deliveryJobId(delivery.id, nextAttempt),

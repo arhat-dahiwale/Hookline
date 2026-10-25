@@ -1,0 +1,41 @@
+# Hookline alert rules (ARCHITECTURE.md 7.3): dead deliveries, dispatch lag
+# and queue depth.
+groups:
+  - name: hookline-delivery
+    rules:
+      - alert: HooklineDeadDeliveriesIncreasing
+        expr: increase(hookline_deliveries_dead_total[15m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Deliveries are going dead'
+          description: '{{ $value }} deliveries moved to dead in the last 15 minutes.'
+
+      - alert: HooklineHighDispatchLag
+        expr: histogram_quantile(0.95, sum(rate(hookline_delivery_dispatch_lag_seconds_bucket[5m])) by (le)) > 30
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'p95 dispatch lag above 30s'
+          description: 'Deliveries wait too long before their attempt starts.'
+
+      - alert: HooklineQueueBacklog
+        expr: hookline_queue_depth{queue="delivery",state="waiting"} > 1000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Delivery queue backlog'
+          description: '{{ $value }} jobs waiting — workers are not keeping up.'
+
+      - alert: HooklineLowSuccessRate
+        expr: |
+          sum(rate(hookline_delivery_attempts_total{outcome="success"}[10m]))
+            / clamp_min(sum(rate(hookline_delivery_attempts_total[10m])), 0.001) < 0.9
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Delivery success rate below 90%'

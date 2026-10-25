@@ -9,6 +9,7 @@ import { AppModule, type Role } from '../../src/app.module.js';
 import { registerApiDocsRoutes } from '../../src/modules/api-docs/index.js';
 import { registerBetterAuthRoutes } from '../../src/modules/auth/index.js';
 import { registerTrpcRoutes } from '../../src/modules/trpc/index.js';
+import { registerObservabilityRoutes } from '../../src/modules/observability/index.js';
 import { parseEnv } from '../../src/modules/platform/index.js';
 import { loadTestEnv } from './test-env.js';
 
@@ -42,6 +43,7 @@ export async function createTestApplication(
   registerApiDocsRoutes(app);
   if (role !== 'worker') {
     registerTrpcRoutes(app, config);
+    registerObservabilityRoutes(app);
   }
   await app.init();
   const instance = app.getHttpAdapter().getInstance() as FastifyInstance;

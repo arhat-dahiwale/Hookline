@@ -2,6 +2,7 @@ import { Injectable, type CanActivate, type ExecutionContext } from '@nestjs/com
 import type { FastifyReply } from 'fastify';
 
 import { rateLimited } from '../platform/errors/app-error.js';
+import { MetricsService } from '../observability/index.js';
 import { TokenBucketRateLimiter } from '../platform/rate-limiter/token-bucket.js';
 import type { ApiKeyRequest } from '../api-keys/index.js';
 
@@ -16,7 +17,10 @@ export const INGESTION_BURST_CAPACITY = 100;
  */
 @Injectable()
 export class IngestionRateLimitGuard implements CanActivate {
-  constructor(private readonly rateLimiter: TokenBucketRateLimiter) {}
+  constructor(
+    private readonly rateLimiter: TokenBucketRateLimiter,
+    private readonly metrics: MetricsService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<ApiKeyRequest>();
@@ -34,6 +38,7 @@ export class IngestionRateLimitGuard implements CanActivate {
     reply.header('RateLimit-Reset', Math.max(0, Math.ceil(result.retryAfterMs / 1000)));
 
     if (!result.allowed) {
+      this.metrics.rateLimited.inc({ scope: 'ingest' });
       reply.header('Retry-After', Math.max(1, Math.ceil(result.retryAfterMs / 1000)));
       throw rateLimited('ingestion rate limit exceeded');
     }

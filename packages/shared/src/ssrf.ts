@@ -31,13 +31,25 @@ function isBlockedIpv4(ip: string): boolean {
 }
 
 function expandIpv6(ip: string): string {
-  // Handle :: expansion (but not embedded IPv4; handled separately).
-  if (!ip.includes('::')) return ip;
-  const [head, tail] = ip.split('::');
+  const [head = '', tail = ''] = ip.split('::');
   const headGroups = head ? head.split(':') : [];
-  const tailGroups = tail ? tail.split(':') : [];
+  let tailGroups: string[] = tail ? tail.split(':') : [];
+  // Dotted-quad tail (e.g. ::ffff:127.0.0.1): the quad occupies the last TWO
+  // 16-bit groups. Without this split, the mapped-address detection below
+  // looks at the wrong indexes and silently passes.
+  const last = tailGroups[tailGroups.length - 1];
+  if (last !== undefined && last.includes('.')) {
+    const quad = last.split('.').map(Number);
+    if (quad.length === 4 && quad.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) {
+      tailGroups = [
+        ...tailGroups.slice(0, -1),
+        ((quad[0]! << 8) | quad[1]!).toString(16),
+        ((quad[2]! << 8) | quad[3]!).toString(16),
+      ];
+    }
+  }
   const missing = 8 - headGroups.length - tailGroups.length;
-  const groups = [...headGroups, ...Array(missing).fill('0'), ...tailGroups];
+  const groups = [...headGroups, ...Array(Math.max(0, missing)).fill('0'), ...tailGroups];
   return groups.join(':');
 }
 
@@ -79,7 +91,11 @@ export interface UrlValidationResult {
 
 /** True when the IP literal is private/reserved/blocked (IPv4 or IPv6). */
 export function isBlockedIp(ip: string): boolean {
-  if (/^d{1,3}(.d{1,3}){3}$/.test(ip)) {
+  // NOTE: the backslashes here are load-bearing. A previous version read
+  // /^d{1,3}(.d{1,3}){3}$/ (no escapes) which never matched a real address,
+  // silently disabling IPv4 blocking on the CONNECT-TIME path while the
+  // separate (correct) regex in validateEndpointUrl masked the bug.
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) {
     return isBlockedIpv4(ip);
   }
   if (ip.includes(':')) {
