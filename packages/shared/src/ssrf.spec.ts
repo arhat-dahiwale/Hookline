@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { validateEndpointUrl } from './ssrf.js';
+import { validateEndpointUrl, isBlockedIp } from './ssrf.js';
 
 const strict = { allowInsecure: false };
 const insecure = { allowInsecure: true };
@@ -65,5 +65,60 @@ describe('validateEndpointUrl (dev allowInsecure)', () => {
   it('still rejects malformed URLs and foreign schemes', () => {
     expect(validateEndpointUrl('nonsense', insecure).ok).toBe(false);
     expect(validateEndpointUrl('ftp://x', insecure).ok).toBe(false);
+  });
+});
+
+describe('isBlockedIp (connect-time gate — regression guard)', () => {
+  // A previous version shipped /^d{1,3}(.d{1,3}){3}$/ (missing backslashes),
+  // which never matched a real IPv4 address: every private range returned
+  // false on the connect-time path while validateEndpointUrl's own correct
+  // regex masked the bug. These direct assertions pin the behavior.
+  it('blocks every private/reserved IPv4 range', () => {
+    for (const ip of [
+      '0.0.0.1',
+      '10.0.0.1',
+      '10.255.255.255',
+      '100.64.0.1',
+      '100.127.255.254',
+      '127.0.0.1',
+      '127.255.255.255',
+      '169.254.169.254',
+      '169.254.0.2',
+      '172.16.0.1',
+      '172.31.255.254',
+      '192.168.0.1',
+      '192.168.255.255',
+      '198.18.0.1',
+      '198.19.255.255',
+    ]) {
+      expect(isBlockedIp(ip), ip).toBe(true);
+    }
+  });
+
+  it('blocks private/reserved IPv6 including the dotted-quad mapped form', () => {
+    for (const ip of [
+      '::',
+      '::1',
+      '::ffff:127.0.0.1',
+      '::ffff:10.0.0.1',
+      'fe80::1',
+      'fc00::1',
+      'fd12::1',
+    ]) {
+      expect(isBlockedIp(ip), ip).toBe(true);
+    }
+  });
+
+  it('allows public addresses', () => {
+    for (const ip of [
+      '1.1.1.1',
+      '8.8.8.8',
+      '172.32.0.1',
+      '100.128.0.1',
+      '2606:4700::1',
+      '2001:4860:4860::8888',
+    ]) {
+      expect(isBlockedIp(ip), ip).toBe(false);
+    }
   });
 });

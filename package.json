@@ -21,7 +21,8 @@
     "prepare": "husky",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
-    "proto:gen": "pnpm --filter @hookline/proto proto:gen"
+    "proto:gen": "pnpm --filter @hookline/proto proto:gen",
+    "check:dashboards": "node scripts/check-dashboards.mjs"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",

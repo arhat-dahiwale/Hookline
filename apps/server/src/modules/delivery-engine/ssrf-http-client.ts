@@ -1,7 +1,9 @@
 import { lookup as dnsLookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
 import { Agent, request } from 'undici';
 
 import { isBlockedIp } from '@hookline/shared';
+import { trace } from '@opentelemetry/api';
 
 export type AttemptOutcome = 'success' | 'http_error' | 'timeout' | 'network_error' | 'blocked';
 
@@ -36,7 +38,14 @@ function ssrfLookup(allowInsecure: boolean): (
   ) => void,
 ) => void {
   return (hostname, options, callback) => {
-    void dnsLookup(hostname, { all: true, verbatim: true })
+    // IP-literal hosts NEVER reach dnsLookup below in practice (Node's
+    // net.connect skips lookup for literals) — so the blocklist must check
+    // them here, or `http://127.0.0.1:...` would connect unchecked.
+    const literalFamily = isIP(hostname);
+    const resolved: Promise<{ address: string; family: number }[]> = literalFamily
+      ? Promise.resolve([{ address: hostname, family: literalFamily }])
+      : dnsLookup(hostname, { all: true, verbatim: true });
+    void resolved
       .then((addresses) => {
         if (addresses.length === 0) {
           callback(new Error(`could not resolve ${hostname}`), []);
@@ -83,8 +92,10 @@ export interface SsrfHttpClientOptions {
  */
 export class SsrfHttpClient {
   private readonly agent: Agent;
+  private readonly allowInsecure: boolean;
 
   constructor(options: SsrfHttpClientOptions) {
+    this.allowInsecure = options.allowInsecure;
     this.agent = new Agent({
       connect: {
         lookup: ssrfLookup(options.allowInsecure) as never,
@@ -96,7 +107,36 @@ export class SsrfHttpClient {
     });
   }
 
-  async send(
+  /**
+   * Explicit span for the outbound webhook: deterministic parentage (the
+   * worker attempt span) instead of relying on undici auto-instrumentation.
+   */
+  send(
+    url: string,
+    headers: Record<string, string>,
+    body: string,
+    timeoutMs: number,
+  ): Promise<SendResult> {
+    return trace
+      .getTracer('hookline.worker')
+      .startActiveSpan('outbound.webhook', { attributes: { 'http.url': url } }, async (span) => {
+        try {
+          const result = await this.sendInternal(url, headers, body, timeoutMs);
+          span.setAttribute('hookline.outcome', result.outcome);
+          if (result.responseStatus !== null) {
+            span.setAttribute('http.response.status_code', result.responseStatus);
+          }
+          return result;
+        } catch (error) {
+          span.recordException(error as Error);
+          throw error;
+        } finally {
+          span.end();
+        }
+      });
+  }
+
+  private async sendInternal(
     url: string,
     headers: Record<string, string>,
     body: string,
@@ -107,6 +147,25 @@ export class SsrfHttpClient {
       ...result,
       durationMs: Date.now() - startedAt,
     });
+
+    // Pre-flight for IP-literal hosts: Node's net.connect SKIPS the custom
+    // connect-time lookup for literals, so `http://127.0.0.1:...` would
+    // otherwise connect unchecked. The URL parser normalizes alternate IPv4
+    // spellings (decimal/hex/octal) to dotted quad, and IPv6 hostnames keep
+    // their brackets — strip them, like validateEndpointUrl does. Hostnames
+    // stay covered by the connect-time lookup.
+    if (!this.allowInsecure) {
+      const hostname = new URL(url).hostname.replace(/^\[|\]$/g, '');
+      if (isIP(hostname) !== 0 && isBlockedIp(hostname)) {
+        return finish({
+          outcome: 'blocked',
+          responseStatus: null,
+          responseHeaders: null,
+          responseBodySnippet: null,
+          errorMessage: 'target address is blocked (SSRF protection)',
+        });
+      }
+    }
 
     let response;
     try {

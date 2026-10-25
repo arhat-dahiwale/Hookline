@@ -224,15 +224,15 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 **Goal:** see inside the system.
 **Exit criteria:** one trace spans API request, queue, worker attempt, and outbound HTTP. Grafana dashboards load from provisioning.
 
-- [ ] OpenTelemetry SDK setup (traces, HTTP/Fastify, Postgres, Redis, BullMQ context propagation)
-- [ ] Trace context carried in job data from API to worker
-- [ ] Prometheus metrics endpoint with the metrics listed in ARCHITECTURE.md
-- [ ] OTel Collector (and Tempo or Jaeger) in compose
-- [ ] Prometheus config and scrape targets (API, workers, exporters)
-- [ ] Postgres and Redis exporters
-- [ ] Grafana provisioning: datasources and dashboards as code (API, Delivery Engine, Queues, Infra)
-- [ ] Alert rules (dead deliveries, dispatch lag, queue depth)
-- [ ] Log correlation (`traceId`, `requestId` in every log line)
+- [x] OpenTelemetry SDK setup (traces, HTTP/Fastify, Postgres, Redis, BullMQ context propagation)
+- [x] Trace context carried in job data from API to worker
+- [x] Prometheus metrics endpoint with the metrics listed in ARCHITECTURE.md
+- [x] OTel Collector (and Tempo or Jaeger) in compose
+- [x] Prometheus config and scrape targets (API, workers, exporters)
+- [x] Postgres and Redis exporters
+- [x] Grafana provisioning: datasources and dashboards as code (API, Delivery Engine, Queues, Infra)
+- [x] Alert rules (dead deliveries, dispatch lag, queue depth)
+- [x] Log correlation (`traceId`, `requestId` in every log line)
 
 ## Phase 13: Scale topology & chaos demo
 

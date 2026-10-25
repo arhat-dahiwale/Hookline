@@ -19,6 +19,7 @@ import {
   type WsChannel,
 } from './realtime.types.js';
 import { RealtimeService } from './realtime.service.js';
+import { MetricsService } from '../observability/index.js';
 
 interface SocketState {
   registryKey: object;
@@ -46,6 +47,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     private readonly realtime: RealtimeService,
     private readonly endpointsRepository: EndpointsRepository,
     private readonly eventsRepository: EventsRepository,
+    private readonly metrics: MetricsService,
   ) {}
 
   afterInit(): void {
@@ -121,6 +123,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     });
     const state: SocketState = { registryKey, organizationId, alive: true };
     this.states.set(client, state);
+    this.metrics.wsConnections.inc();
 
     client.on('pong', () => {
       state.alive = true;
@@ -145,6 +148,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     if (state) {
       this.realtime.unregisterSocket(state.registryKey);
       this.states.delete(client);
+      this.metrics.wsConnections.dec();
     }
   }
 

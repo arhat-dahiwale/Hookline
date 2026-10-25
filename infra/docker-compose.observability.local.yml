@@ -1,0 +1,25 @@
+# Local verification overlay for the observability stack (run ONCE, Phase 12):
+# points Prometheus at api/worker processes running on the HOST (via
+# host.docker.internal) and the infra exporters at the dev compose's
+# published Postgres/Redis ports, instead of the Phase 13 container network.
+#
+#   HOOKLINE_PG_PASSWORD=<from .env> \
+#   docker compose -f infra/docker-compose.observability.yml \
+#                  -f infra/docker-compose.observability.local.yml up -d
+#
+# Never used in CI or the demo topology — a developer verification helper.
+name: hookline-observability
+
+services:
+  prometheus:
+    volumes:
+      - ./prometheus.local-verify.yml:/etc/prometheus/prometheus.yml:ro
+      - ./alerts.yml:/etc/prometheus/alerts.yml:ro
+
+  postgres-exporter:
+    environment:
+      DATA_SOURCE_NAME: postgresql://hookline:${HOOKLINE_PG_PASSWORD:-change-me}@host.docker.internal:15432/hookline?sslmode=disable
+
+  redis-exporter:
+    environment:
+      REDIS_ADDR: redis://host.docker.internal:16379

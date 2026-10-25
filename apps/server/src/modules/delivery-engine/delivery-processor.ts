@@ -1,5 +1,7 @@
 import { Inject, Injectable, Logger, type OnApplicationShutdown } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { MetricsService } from '../observability/index.js';
+import { withContinuedTrace } from '../observability/trace-context.js';
 import { Worker, type Job } from 'bullmq';
 
 import {
@@ -67,6 +69,7 @@ export class DeliveryProcessor implements OnApplicationShutdown {
     private readonly breaker: CircuitBreakerService,
     private readonly outboundRateLimiter: TokenBucketRateLimiter,
     private readonly emitter: EventEmitter2,
+    private readonly metrics: MetricsService,
   ) {
     this.httpClient = new SsrfHttpClient({ allowInsecure: config.ALLOW_INSECURE_ENDPOINTS });
   }
@@ -109,6 +112,7 @@ export class DeliveryProcessor implements OnApplicationShutdown {
       capacity: Math.max(endpoint.rateLimitPerSecond * 2, 1),
     });
     if (!outbound.allowed) {
+      this.metrics.rateLimited.inc({ scope: 'outbound' });
       await this.redelay(delivery, Math.max(outbound.retryAfterMs, 100), job);
       return;
     }
@@ -159,6 +163,14 @@ export class DeliveryProcessor implements OnApplicationShutdown {
       finishedAt,
     });
 
+    this.metrics.deliveryAttempts.inc({ outcome: result.outcome });
+    if (result.durationMs !== null) {
+      this.metrics.deliveryAttemptDuration.observe(result.durationMs / 1000);
+    }
+    const scheduledAt = delivery.nextAttemptAt ?? delivery.createdAt;
+    this.metrics.deliveryDispatchLag.observe(
+      Math.max(0, (startedAt.getTime() - scheduledAt.getTime()) / 1000),
+    );
     await this.emitter.emitAsync('delivery.attempt.completed', {
       organizationId: delivery.organizationId,
       deliveryId: delivery.id,
@@ -194,6 +206,7 @@ export class DeliveryProcessor implements OnApplicationShutdown {
         lastError,
         completedAt: finishedAt,
       });
+      this.metrics.deliveriesDead.inc();
       await this.emitStatusChanged(delivery, 'dead', attemptNumber, null);
       return;
     }
@@ -264,7 +277,17 @@ export class DeliveryProcessor implements OnApplicationShutdown {
     this.worker = new Worker<DeliveryJobData>(
       DELIVERY_QUEUE_NAME,
       async (job: Job<DeliveryJobData>) => {
-        await this.process(job.data.deliveryId, job.data.organizationId, job);
+        // Continue the enqueueing request's trace across the queue boundary.
+        await withContinuedTrace(
+          job.data.traceContext,
+          'worker.delivery.attempt',
+          {
+            'hookline.delivery_id': job.data.deliveryId,
+            'hookline.organization_id': job.data.organizationId,
+            'messaging.bullmq.job.id': job.id ?? '',
+          },
+          async () => this.process(job.data.deliveryId, job.data.organizationId, job),
+        );
       },
       {
         prefix: BULLMQ_PREFIX,

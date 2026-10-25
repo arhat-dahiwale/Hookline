@@ -2,6 +2,8 @@ import { Buffer } from 'node:buffer';
 
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { trace } from '@opentelemetry/api';
+import { MetricsService } from '../observability/index.js';
 import { MAX_PAYLOAD_BYTES } from '@hookline/shared';
 
 import { TenantScope } from '../platform/database/tenant-scope.js';
@@ -51,9 +53,38 @@ export class EventsService {
     private readonly redis: RedisService,
     private readonly deliveryQueue: DeliveryQueue,
     private readonly emitter: EventEmitter2,
+    private readonly metrics: MetricsService,
   ) {}
 
-  async ingest(scope: TenantScope, input: IngestInput): Promise<IngestResult> {
+  /**
+   * Explicit span for ingestion (ARCHITECTURE.md 7.3): the enqueue inherits
+   * this context, so the job carries a valid traceparent regardless of
+   * whether the HTTP server instrumentation is active (Node-version
+   * dependent).
+   */
+  ingest(scope: TenantScope, input: IngestInput): Promise<IngestResult> {
+    return trace
+      .getTracer('hookline.api')
+      .startActiveSpan(
+        'ingest.event',
+        { attributes: { 'hookline.event_type': input.type } },
+        async (span) => {
+          try {
+            const result = await this.ingestInternal(scope, input);
+            span.setAttribute('hookline.event_id', result.event.id);
+            span.setAttribute('hookline.deliveries_created', result.deliveries.length);
+            return result;
+          } catch (error) {
+            span.recordException(error as Error);
+            throw error;
+          } finally {
+            span.end();
+          }
+        },
+      );
+  }
+
+  private async ingestInternal(scope: TenantScope, input: IngestInput): Promise<IngestResult> {
     const serialized = Buffer.byteLength(canonicalizeJson(input.payload), 'utf8');
     if (serialized > MAX_PAYLOAD_BYTES) {
       throw payloadTooLarge(`payload exceeds ${Math.floor(MAX_PAYLOAD_BYTES / 1024)} KB`);
@@ -109,6 +140,8 @@ export class EventsService {
           status: delivery.status,
         });
       }
+      this.metrics.eventsIngested.inc();
+      this.metrics.deliveriesCreated.inc(deliveries.length);
       // Same-process reactions only (ARCHITECTURE.md 7.4): the realtime
       // module bridges these onto Redis for WebSocket fan-out.
       await this.emitter.emitAsync('event.created', {

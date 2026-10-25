@@ -11,6 +11,8 @@ import { AppModule, type Role } from './app.module.js';
 import { registerApiDocsRoutes } from './modules/api-docs/index.js';
 import { registerBetterAuthRoutes } from './modules/auth/index.js';
 import { registerTrpcRoutes } from './modules/trpc/index.js';
+import { registerObservabilityRoutes } from './modules/observability/index.js';
+import { startTracing, stopTracing } from './modules/observability/tracing.js';
 import {
   loadAppConfig,
   PinoLoggerService,
@@ -57,7 +59,10 @@ function registerSignalHandlers(
         process.exit(1);
       }, timeoutMs);
       killTimer.unref();
-      void shutdown().then(
+      void (async () => {
+        await shutdown();
+        await stopTracing();
+      })().then(
         () => {
           clearTimeout(killTimer);
           process.exit(0);
@@ -85,6 +90,7 @@ async function bootstrapHttp(config: AppConfig, role: Role): Promise<void> {
   registerBetterAuthRoutes(app);
   registerApiDocsRoutes(app);
   registerTrpcRoutes(app, config);
+  registerObservabilityRoutes(app);
   await app.listen({ port: config.PORT, host: '0.0.0.0' });
   const logger = app.get(PinoLoggerService).child({ module: 'bootstrap' });
   logger.info({ role, port: config.PORT }, 'hookline http server listening');
@@ -109,6 +115,7 @@ async function bootstrapWorker(config: AppConfig): Promise<void> {
 async function main(): Promise<void> {
   // Parse env before booting Nest so invalid config fails fast.
   const config = loadAppConfig();
+  startTracing(config);
   if (config.ROLE === 'worker') {
     await bootstrapWorker(config);
     return;

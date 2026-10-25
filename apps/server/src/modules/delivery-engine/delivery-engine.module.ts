@@ -3,6 +3,7 @@ import type { DynamicModule } from '@nestjs/common';
 import { DeliveriesModule } from '../deliveries/index.js';
 import { EndpointsModule } from '../endpoints/index.js';
 import { EventsModule } from '../events/index.js';
+import { ObservabilityModule } from '../observability/index.js';
 import { CircuitBreakerService } from './breaker.js';
 import { DeliveryProcessor } from './delivery-processor.js';
 import { DeliveryQueueModule } from '../delivery-queue/index.js';
@@ -21,6 +22,7 @@ export class DeliveryEngineModule {
     cachedModule = {
       module: DeliveryEngineModule,
       imports: [
+        ObservabilityModule.forRole('api'),
         ApiKeysModule.forRoot(),
         DeliveryQueueModule.forRoot(),
         DeliveriesModule.forRoot(),

@@ -3,6 +3,7 @@ import type { DynamicModule } from '@nestjs/common';
 import { AuthModule } from '../auth/index.js';
 import { EndpointsModule } from '../endpoints/index.js';
 import { EventsModule } from '../events/index.js';
+import { ObservabilityModule } from '../observability/index.js';
 import { RealtimeGateway } from './realtime.gateway.js';
 import { RealtimeService } from './realtime.service.js';
 
@@ -17,7 +18,12 @@ export class RealtimeModule {
     if (cachedModule) return cachedModule;
     cachedModule = {
       module: RealtimeModule,
-      imports: [AuthModule.forRoot(), EndpointsModule.forRoot(), EventsModule.forRoot()],
+      imports: [
+        AuthModule.forRoot(),
+        EndpointsModule.forRoot(),
+        EventsModule.forRoot(),
+        ObservabilityModule.forRole('api'),
+      ],
       providers: [RealtimeService, RealtimeGateway],
       exports: [RealtimeService],
     };
