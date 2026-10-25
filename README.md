@@ -110,7 +110,9 @@ pnpm dev                        # API on :4000, dashboard on :3100
 Then open the dashboard at **http://localhost:3100**. The web app reaches the
 API through same-origin paths (`/trpc` and `/api/auth` are rewritten by
 Next.js to `API_ORIGIN`, default `http://localhost:4000`), so session cookies
-work without CORS. Port 3100 is used because 3000 is commonly taken; change
+work without CORS. The live log connects its WebSocket directly to the API
+(`NEXT_PUBLIC_WS_URL`, default `ws://localhost:4000/ws` — cookies are shared
+across localhost ports). Port 3100 is used because 3000 is commonly taken; change
 it via the `dev` script in `apps/web/package.json` and keep
 `AUTH_TRUSTED_ORIGINS` in `.env` in sync (Better Auth rejects POSTs from
 untrusted origins).

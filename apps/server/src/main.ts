@@ -3,6 +3,7 @@ import 'reflect-metadata';
 import Fastify from 'fastify';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import { WsAdapter } from '@nestjs/platform-ws';
 
 import { newId } from '@hookline/shared';
 
@@ -79,6 +80,8 @@ async function bootstrapHttp(config: AppConfig, role: Role): Promise<void> {
   );
   app.useLogger(app.get(PinoLoggerService));
   app.enableShutdownHooks();
+  // WebSocket gateway (/ws) on the same HTTP server via `ws`.
+  app.useWebSocketAdapter(new WsAdapter(app));
   registerBetterAuthRoutes(app);
   registerApiDocsRoutes(app);
   registerTrpcRoutes(app, config);

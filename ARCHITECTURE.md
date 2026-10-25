@@ -272,21 +272,22 @@ server {
 
 All config is validated with Zod at startup. The app refuses to boot on invalid config.
 
-| Variable                                | Purpose                                                 |
-| --------------------------------------- | ------------------------------------------------------- |
-| `ROLE`                                  | `api` / `worker` / `all`                                |
-| `NODE_ENV`, `PORT`, `LOG_LEVEL`         | Basics                                                  |
-| `DATABASE_URL`                          | Postgres                                                |
-| `REDIS_URL`                             | Redis                                                   |
-| `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` | Auth                                                    |
-| `AUTH_TRUSTED_ORIGINS`                  | Dashboard origins trusted for Better Auth CSRF checks   |
-| `ENCRYPTION_KEY`                        | AES-256-GCM key for endpoint secrets (32 bytes, base64) |
-| `INTERNAL_GRPC_TOKEN`                   | Shared token for API→worker gRPC                        |
-| `WORKER_GRPC_URL`                       | Address of the worker gRPC server                       |
-| `OTEL_EXPORTER_OTLP_ENDPOINT`           | Telemetry export                                        |
-| `ALLOW_INSECURE_ENDPOINTS`              | Dev only: allow http/localhost endpoint URLs            |
-| `SHUTDOWN_TIMEOUT_MS`                   | Graceful shutdown budget                                |
-| `DELIVERY_CONCURRENCY`                  | Jobs processed concurrently per worker                  |
+| Variable                                | Purpose                                                       |
+| --------------------------------------- | ------------------------------------------------------------- |
+| `ROLE`                                  | `api` / `worker` / `all`                                      |
+| `NODE_ENV`, `PORT`, `LOG_LEVEL`         | Basics                                                        |
+| `DATABASE_URL`                          | Postgres                                                      |
+| `REDIS_URL`                             | Redis                                                         |
+| `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` | Auth                                                          |
+| `AUTH_TRUSTED_ORIGINS`                  | Dashboard origins trusted for Better Auth CSRF checks         |
+| `NEXT_PUBLIC_WS_URL`                    | Browser-facing WebSocket URL (default ws://localhost:4000/ws) |
+| `ENCRYPTION_KEY`                        | AES-256-GCM key for endpoint secrets (32 bytes, base64)       |
+| `INTERNAL_GRPC_TOKEN`                   | Shared token for API→worker gRPC                              |
+| `WORKER_GRPC_URL`                       | Address of the worker gRPC server                             |
+| `OTEL_EXPORTER_OTLP_ENDPOINT`           | Telemetry export                                              |
+| `ALLOW_INSECURE_ENDPOINTS`              | Dev only: allow http/localhost endpoint URLs                  |
+| `SHUTDOWN_TIMEOUT_MS`                   | Graceful shutdown budget                                      |
+| `DELIVERY_CONCURRENCY`                  | Jobs processed concurrently per worker                        |
 
 ## 10. Architecture decisions
 

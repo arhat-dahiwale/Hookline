@@ -61,16 +61,21 @@ test('sign up, create org + endpoint, ingest via API key, see delivery, replay',
   expect(apiKey).toMatch(/^hl_live_/);
   await page.getByTestId('api-key-secret-done').click();
 
-  // Send an event through the PUBLIC REST API with the key.
+  // Open the live log FIRST, then send the event through the PUBLIC REST
+  // API: rows must appear without any page refresh (WebSocket fan-out).
+  await page.goto('/deliveries');
+  await expect(page.getByTestId('live-log')).toBeVisible();
   const ingest = await fetch(`${API}/v1/events`, {
     method: 'POST',
     headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
     body: JSON.stringify({ type: 'e2e.journey', payload: { run: unique() } }),
   });
   expect(ingest.status).toBe(202);
+  await expect(
+    page.getByTestId('live-log').locator('li', { hasText: 'delivery' }).first(),
+  ).toBeVisible({ timeout: 45_000 });
 
-  // The delivery appears in the dashboard (reloaded view reads via tRPC).
-  await page.goto('/deliveries');
+  // The table shows the delivery as succeeded once the worker finishes.
   await expect(
     page.getByTestId('deliveries-table').locator('tr', { hasText: 'succeeded' }).first(),
   ).toBeVisible({ timeout: 45_000 });

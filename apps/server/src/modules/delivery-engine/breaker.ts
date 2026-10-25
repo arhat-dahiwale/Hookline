@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 
 import { RedisService } from '../platform/redis/redis.service.js';
 import { EndpointsRepository } from '../endpoints/index.js';
@@ -46,6 +46,7 @@ export class CircuitBreakerService {
   constructor(
     private readonly redis: RedisService,
     private readonly endpointsRepository: EndpointsRepository,
+    private readonly emitter: EventEmitter2,
   ) {}
 
   private async read(endpointId: string): Promise<BreakerRecord> {
@@ -229,6 +230,17 @@ export class CircuitBreakerService {
         ...(state === 'closed' ? { lastSuccessAt: new Date() } : {}),
         ...(state === 'open' ? { lastFailureAt: new Date() } : {}),
       });
+      // Fire-and-forget: the realtime bridge fans this out to WebSocket
+      // subscribers. Never blocks or fails the delivery path.
+      const endpoint = await this.endpointsRepository.findByIdUnscoped(endpointId);
+      if (endpoint) {
+        void this.emitter.emit('endpoint.health.changed', {
+          organizationId: endpoint.organizationId,
+          endpointId,
+          state,
+          reason: extra.consecutiveFailures !== undefined ? 'failures' : 'probe',
+        });
+      }
     } catch (error) {
       this.logger.warn(
         `breaker snapshot failed for ${endpointId}: ${error instanceof Error ? error.message : error}`,

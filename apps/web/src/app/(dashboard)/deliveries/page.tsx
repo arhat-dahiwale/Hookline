@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import Link from 'next/link';
 import { useState } from 'react';
 
+import { LiveLog } from '@/components/live-log';
 import { DeliveryStatusBadge } from '@/components/status-badge';
 import { EmptyBlock, ErrorBlock, LoadingBlock } from '@/components/view-states';
 import { Badge } from '@/components/ui/badge';
@@ -22,8 +23,8 @@ const PAGE_SIZE = 25;
 const STATUSES = ['pending', 'in_progress', 'retrying', 'succeeded', 'dead', 'cancelled'] as const;
 
 /**
- * Deliveries list (API.md deliveries.*): status filter, cursor pagination,
- * and admin-only bulk replay of dead deliveries for the current filter.
+ * Deliveries list (API.md deliveries.*): live log (WebSocket), status filter,
+ * cursor pagination, and admin-only bulk replay of dead deliveries.
  */
 export default function DeliveriesPage() {
   const [status, setStatus] = useState<string>('all');
@@ -36,6 +37,14 @@ export default function DeliveriesPage() {
     cursor: cursor ?? undefined,
   });
 
+  // WebSocket reconnect backfill: pull everything updated since the last
+  // event the live log saw, then refresh the table (API.md deliveries.since).
+  const utils = trpc.useUtils();
+  const backfill = async (sinceIso: string): Promise<void> => {
+    await utils.client.deliveries.since.query({ since: sinceIso });
+    await utils.deliveries.list.invalidate();
+  };
+
   const bulkReplay = trpc.deliveries.replayBulk.useMutation({
     onSuccess: (result) => {
       void list.refetch();
@@ -46,6 +55,10 @@ export default function DeliveriesPage() {
 
   return (
     <div className="space-y-6">
+      <LiveLog
+        onBackfill={(sinceIso) => void backfill(sinceIso)}
+        onDeliveryChanged={() => void utils.deliveries.list.invalidate()}
+      />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Deliveries</h1>

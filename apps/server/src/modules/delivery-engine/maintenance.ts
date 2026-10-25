@@ -1,4 +1,5 @@
 import { Injectable, Logger, type OnApplicationShutdown } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Queue, Worker, type Job } from 'bullmq';
 
 import {
@@ -45,6 +46,7 @@ export class MaintenanceService implements OnApplicationShutdown {
     private readonly endpointsService: EndpointsService,
     private readonly deliveryQueue: DeliveryQueue,
     private readonly breaker: CircuitBreakerService,
+    private readonly emitter: EventEmitter2,
   ) {}
 
   async start(): Promise<void> {
@@ -150,6 +152,11 @@ export class MaintenanceService implements OnApplicationShutdown {
           { type: 'system' },
         );
         disabled.push(endpointId);
+        void this.emitter.emit('endpoint.auto_disabled', {
+          organizationId: endpoint.organizationId,
+          endpointId,
+          reason: 'circuit_breaker',
+        });
       } catch {
         // setStatus throws on already-disabled; harmless in a race.
       }

@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer';
 
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { MAX_PAYLOAD_BYTES } from '@hookline/shared';
 
 import { TenantScope } from '../platform/database/tenant-scope.js';
@@ -49,6 +50,7 @@ export class EventsService {
     private readonly unitOfWork: UnitOfWork,
     private readonly redis: RedisService,
     private readonly deliveryQueue: DeliveryQueue,
+    private readonly emitter: EventEmitter2,
   ) {}
 
   async ingest(scope: TenantScope, input: IngestInput): Promise<IngestResult> {
@@ -105,6 +107,28 @@ export class EventsService {
           organizationId: delivery.organizationId,
           attemptCount: delivery.attemptCount,
           status: delivery.status,
+        });
+      }
+      // Same-process reactions only (ARCHITECTURE.md 7.4): the realtime
+      // module bridges these onto Redis for WebSocket fan-out.
+      await this.emitter.emitAsync('event.created', {
+        organizationId: scope.organizationId,
+        event: { id: event.id, type: event.type, createdAt: event.createdAt.toISOString() },
+        deliveries: deliveries.map((delivery) => ({
+          id: delivery.id,
+          endpointId: delivery.endpointId,
+          status: delivery.status,
+        })),
+      });
+      for (const delivery of deliveries) {
+        await this.emitter.emitAsync('delivery.created', {
+          organizationId: scope.organizationId,
+          delivery: {
+            id: delivery.id,
+            eventId: delivery.eventId,
+            endpointId: delivery.endpointId,
+            status: delivery.status,
+          },
         });
       }
       return { event, deliveries, replay: false };

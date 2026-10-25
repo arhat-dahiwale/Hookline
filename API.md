@@ -316,17 +316,17 @@ Envelope:
 { "type": "delivery.attempt.completed", "ts": "2026-10-24T10:00:01.123Z", "data": {} }
 ```
 
-| `type`                       | `data`                                                |
-| ---------------------------- | ----------------------------------------------------- |
-| `subscribed`                 | `{ channel }`                                         |
-| `event.created`              | Event summary and delivery IDs                        |
-| `delivery.created`           | Delivery object                                       |
-| `delivery.status.changed`    | `{ deliveryId, status, attemptCount, nextAttemptAt }` |
-| `delivery.attempt.completed` | Attempt object (headers and body snippet included)    |
-| `endpoint.health.changed`    | `{ endpointId, state, reason }`                       |
-| `endpoint.auto_disabled`     | `{ endpointId, reason }`                              |
-| `pong`                       | `{}`                                                  |
-| `error`                      | `{ code, message }`                                   |
+| `type`                       | `data`                                                                                             |
+| ---------------------------- | -------------------------------------------------------------------------------------------------- |
+| `subscribed`                 | `{ channel }`                                                                                      |
+| `event.created`              | Event summary and delivery IDs                                                                     |
+| `delivery.created`           | Delivery object                                                                                    |
+| `delivery.status.changed`    | `{ deliveryId, status, attemptCount, nextAttemptAt, eventId, endpointId }`                         |
+| `delivery.attempt.completed` | Attempt object (headers and body snippet included), plus `eventId`/`endpointId` for scoped routing |
+| `endpoint.health.changed`    | `{ endpointId, state, reason }`                                                                    |
+| `endpoint.auto_disabled`     | `{ endpointId, reason }`                                                                           |
+| `pong`                       | `{}`                                                                                               |
+| `error`                      | `{ code, message }`                                                                                |
 
 **Heartbeat:** server sends a WS ping every 25 s. Clients not responding within 10 s are closed.
 **Reconnect:** exponential backoff with jitter (1 s base, 30 s max). After reconnecting, the client resubscribes and calls `deliveries.since({ since })` to backfill.
