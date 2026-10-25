@@ -759,3 +759,56 @@ Append-only. **After every run**, add a new entry at the **bottom** using the te
 ### Next steps
 
 - AUTONOMOUS RUN SUMMARY (Phases 7-12) below, then Phase 13
+
+---
+
+## AUTONOMOUS RUN SUMMARY — Phases 7 to 12 (2026-10-26)
+
+**Phases done:** 7 (tRPC + dashboard foundation), 8 (dashboard features + Playwright E2E), 9 (WebSocket real-time), 10 (internal gRPC), 11 (analytics), 12 (observability). All merged into `main` locally with `--no-ff`; every phase has its own branch (never pushed, never deleted). Phases 0-6 were verified in Run 008.
+
+**Tasks done vs blocked:** all PHASES.md tasks in Phases 7-12 are `[x]`. Zero BLOCKED.
+
+### Decisions made without a human (the load-bearing ones)
+
+- Next.js pinned to 15.5.28 (mature 15.x over then-current 16) for stability across a long autonomous run
+- shadcn/ui primitives vendored by hand (no CLI registry fetch at build time); Radix deps identical to what the CLI would add
+- Web dev port 3100 (3000 taken); `AUTH_TRUSTED_ORIGINS` added because Better Auth rejects browser POSTs from untrusted origins — the web origin MUST be listed
+- Server emits CJS declarations; the web app consumes the tRPC router type via a type-only entry (`apps/server/src/trpc-router.ts`) mapped to `dist/*.d.ts`
+- npm's `proto-loader-gen-types` name is a dependency-confusion PLACEHOLDER; the real generator ships inside `@grpc/proto-loader`'s bin — `pnpm proto:gen` spawns that
+- Manual OTel spans (`ingest.event`, `outbound.webhook`) anchor trace propagation because the HTTP auto-instrumentation's server span is not the active context parent on Node 24
+- WS connection limit is per API instance (in-memory); multi-instance enforcement via Redis deferred (leaks counts on replica crash) — accepted risk
+- Stats queries aggregate RAW tables (always accurate); the rollup table feeds future optimization + Grafana, not the dashboard queries
+- Analytics `window` object memoized per range (a fresh object every render never lets TanStack Query settle — found via E2E)
+
+### Dependencies added (all pinned exact, reasons in the run entries)
+
+`@trpc/server@11.19.0`; web: `next@15.5.28`, `react@19.3.1`, `@trpc/client@11.19.0`, `@trpc/react-query@11.19.0`, `@tanstack/react-query@5.104.5`, `zustand@5.0.16`, `better-auth@1.7.12`, `tailwindcss@4.3.3`, `@tailwindcss/postcss@4.3.3`, `lucide-react@1.61.0`, `cva@0.7.1`, `clsx@2.1.1`, `tailwind-merge@3.7.0`, Radix (`dropdown-menu`, `label`, `separator`, `slot`, `dialog`, `select`, `switch`, `tabs`), `react-hook-form@7.91.0`, `@hookform/resolvers@6.0.0`, `@tanstack/react-table@9.3.1`, `motion@14.6.0`, `sonner@2.0.8`, `recharts@3.10.1`, `@playwright/test@1.56.0`; server: `@nestjs/platform-ws@12.2.0`, `@nestjs/websockets@12.2.0`, `ws@8.22.0`, `@grpc/grpc-js@1.14.6`, `@grpc/proto-loader@0.8.1`, `@opentelemetry/{api,sdk-node,auto-instrumentations-node,exporter-trace-otlp-http,sdk-trace-base}`, `prom-client@15.1.3`
+
+### Bugs found and fixed (chronological, all with regression tests)
+
+1. `MaintenanceService` had `@Inject(APP_CONFIG)` on the RedisService param — schedulers NEVER registered in live boots (Phase 6 bug, fixed Run 009)
+2. `ssrfLookup` ignored the `all:true` callback form — every undici webhook delivery failed with "Invalid IP address: undefined" (fixed Run 010, found by E2E)
+3. WS handshake dropped the client's first frames during the async auth round-trip (fixed Run 011, found via a standalone probe)
+4. BullMQ schedulers persist in shared test Redis across files — a scheduler-count test flaked; now asserts presence (Run 011)
+5. ObservabilityModule cache pinned to the `api` variant → worker metrics server never started (fixed Run 014, found by the stack boot)
+6. Tempo 2.7 removed `-mode=single-tenant` and requires explicit `-config.file` (Run 014)
+7. **SECURITY: connect-time SSRF gate was IPv4-blind** — `isBlockedIp` regex missing backslashes + `net.connect` skipping custom lookups for IP literals + broken `::ffff:` mapped expansion. Creation-time URL validation had masked all three. Fixed with pre-flight literal gate, corrected shared validator, and a 6-test connect-time matrix (`apps/server/test/int/ssrf-connect.spec.ts`) plus direct `isBlockedIp` regression tests in `packages/shared/src/ssrf.spec.ts`
+
+### What was NOT verified
+
+- GitHub Actions workflows (none exist yet — Phase 14)
+- The observability stack under real load (boot verification was functional: targets up, dashboards provisioned, one trace stored; no load ran through it)
+- Worker-role spans in the live stack (no deliveries were running during boot verification; covered instead by `test/int/tracing.spec.ts`)
+- mTLS for internal gRPC (documented future work; token auth only)
+
+### Accepted risks
+
+- WS connection limit per-instance; `StreamDeliveryAttempts` polls at 500 ms server-side; stats queries hit raw tables; bcrypt/argon secrets config left at Better Auth defaults; Grafana default password unless env is set at deploy time
+
+### Where the human should look first
+
+1. **The SSRF finding**: `apps/server/test/int/ssrf-connect.spec.ts` — proves connect-time blocking with `ALLOW_INSECURE_ENDPOINTS` OFF across loopback/private/metadata/IPv6/mapped/alternate-spelling/hostname cases, and `packages/shared/src/ssrf.spec.ts` pins `isBlockedIp` itself. This was a live vulnerability class masked by tests that only exercised creation-time validation
+2. `test/int/tracing.spec.ts` — one trace spans API request → queue → worker attempt → outbound webhook
+3. `e2e/journey.spec.ts` — the full user journey incl. live WebSocket updates without refresh
+4. `docs/screenshots/` — 13 PNGs of every dashboard page incl. analytics
+5. `pnpm check:dashboards` + `infra/` — observability as code
