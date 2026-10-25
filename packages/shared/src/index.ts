@@ -29,6 +29,7 @@ export {
   apiKeyScopesSchema,
   createApiKeySchema,
   updateOrgSettingsSchema,
+  statsWindowSchema,
   API_KEY_SCOPES,
   type ApiKeyScope,
 } from './schemas.js';

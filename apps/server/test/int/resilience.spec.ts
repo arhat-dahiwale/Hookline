@@ -220,8 +220,12 @@ describe('maintenance schedulers', () => {
     // start() throw at boot — silently, since the worker bootstrap swallows
     // it — while the run* helpers kept the tests green.
     await maintenance.start();
+    // Phase 11 adds the analytics schedulers on the same queue. Schedulers
+    // persist in Redis across test apps, so assert presence, not exclusivity.
     const schedulers = await maintenance.getSchedulerNames();
-    expect(schedulers.sort()).toEqual(['breaker-sweep', 'reconciler']);
+    for (const expected of ['breaker-sweep', 'reconciler', 'retention-cleanup', 'stats-rollup']) {
+      expect(schedulers).toContain(expected);
+    }
     await maintenance.stop();
   });
 });

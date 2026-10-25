@@ -36,7 +36,7 @@ export class AppModule {
             EndpointsModule.forRoot(),
             EventsModule.forRoot(),
             DeliveriesModule.forRoot(),
-            AnalyticsModule.forRoot(),
+            AnalyticsModule.forRole(role),
             ApiDocsModule.forRoot(),
             HealthModule.forRoot(),
             TrpcModule.forRoot(),

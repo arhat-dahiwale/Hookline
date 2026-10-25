@@ -675,3 +675,40 @@ Append-only. **After every run**, add a new entry at the **bottom** using the te
 ### Next steps
 
 - Phase 11: analytics (hourly rollups with raw-data correctness tests, stats queries + tRPC stats router, Recharts dashboards, endpoint health panel, retention cleanup in batches)
+
+---
+
+## Run 013: 2026-10-25 08:40 (+05:30)
+
+- **Agent / tool:** zcode, GLM-5.3
+- **Phase / task:** Phase 11: analytics (all tasks)
+- **Status:** completed
+
+### What I did
+
+- **Rollup job:** `AnalyticsService.runRollup()` recomputes hourly buckets in `delivery_stats_hourly` from RAW `delivery_attempts`/`deliveries` (attempts aggregates with `percentile_cont` p50/p95/p99; dead-delivery counts by `completed_at`), idempotent full recompute of the last 6h window; scheduled via BullMQ job scheduler `stats-rollup` every 5 min on the shared maintenance queue (plus `retention-cleanup` hourly) — single firing across replicas, started by an `AnalyticsBootstrap` in worker/all roles
+- **Stats queries (raw, always accurate):** `overview` (events/deliveries/attempts/succeeded/failed/dead/successRate/percentiles), `timeseries` (per-hour volume + latency), `endpointBreakdown` (per-endpoint attempts, success rate, dead, breaker state join). Exposed via the tRPC `stats` router (role M) with `statsWindowSchema` from packages/shared
+- **Retention cleanup:** per-org effective retention (override in `org_settings` via `SettingsRepository.listAll()`, else `RETENTION_DAYS`), deleting old EVENTS in 500-row batches (deliveries + attempts cascade via FKs), max 20 batches/run; default pass walks distinct orgs from the events table
+- **Analytics page (`/analytics`):** KPI cards, Recharts volume (stacked area), latency percentiles (lines), outcome breakdown (bars), endpoint health panel with breaker badges; time-range selector (1h/24h/7d/30d) and auto-refresh toggle (10s); loading/empty/error states. Nav updated; analytics screenshot added to the E2E pages pass
+- **Tests (3, `analytics.spec.ts`):** rollup correctness vs raw data (totals/outcomes/dead count/percentiles via a `percentile_cont`-equivalent helper + idempotency), query accuracy (overview/timeseries/breakdown agree on the window), retention (batched deletion 505→2 batches, cascade, per-org override honored, recent events kept)
+- **Test infra lessons:** TanStack Query inputs must be stable — the analytics `window` object is memoized per range or the query never settles; BullMQ job schedulers persist in the shared testcontainers Redis across files, so the maintenance-schedulers test asserts presence (subset), not exclusivity
+
+### Files changed
+
+- `apps/server/src/modules/analytics/**` (service + repository + role-gated module + bootstrap), `events/{events.repository.ts,events.service.ts}` (deleteOlderThan + listDistinctOrgIds), `settings/settings.repository.ts` (listAll), `trpc/{stats.router.ts,app-router.ts,trpc.routes.ts,trpc.module.ts}`, `app.module.ts` (forRole)
+- `apps/web/src/app/(dashboard)/analytics/page.tsx` (new), dashboard nav, `e2e/auth-and-pages.spec.ts` (+analytics screenshot)
+- Deps: `recharts@3.10.1` (web)
+- Docs: ARCHITECTURE.md (analytics row), PHASES.md (Phase 11 ticked)
+
+### Commands run and results
+
+- `pnpm lint` / `pnpm typecheck` / `pnpm build`: pass (6 tasks)
+- `pnpm test`: pass; `pnpm test:int`: pass (85 integration, 14 files); `pnpm test:e2e`: pass (5/5, 13 screenshots)
+
+### Issues, risks, open questions
+
+- Stats queries aggregate raw tables — for very long windows on large tenants this is heavier than reading the rollup table; the rollup table is the Phase 12 Grafana source and the future optimization path (documented)
+
+### Next steps
+
+- Phase 12: observability (OTel traces API→queue→worker→HTTP, Prometheus metrics per ARCHITECTURE 7.3, collector/prometheus/grafana provisioning under infra/, alert rules, trace_id in logs)

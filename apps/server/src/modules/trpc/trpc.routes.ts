@@ -10,6 +10,7 @@ import { EventsService } from '../events/index.js';
 import { ApiKeysService } from '../api-keys/index.js';
 import { AuditService } from '../audit/index.js';
 import { SettingsService } from '../settings/index.js';
+import { AnalyticsService } from '../analytics/index.js';
 import { TrpcContextFactory } from './trpc-context.factory.js';
 import { createAppRouter } from './app-router.js';
 
@@ -35,6 +36,7 @@ export function registerTrpcRoutes(app: INestApplication, config: AppConfig): vo
     apiKeysService: app.get(ApiKeysService),
     auditService: app.get(AuditService),
     settingsService: app.get(SettingsService),
+    analyticsService: app.get(AnalyticsService),
     getWorkerOperations: () => contextFactory.getWorkerOperations(),
   });
 
