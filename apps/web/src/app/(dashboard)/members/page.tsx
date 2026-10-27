@@ -160,7 +160,7 @@ export default function MembersPage() {
 
       {rows.length === 0 ? (
         <EmptyBlock
-          title="No members"
+          title="No members yet"
           description="Invite teammates so they can manage endpoints and events."
           testId="members-empty"
         />

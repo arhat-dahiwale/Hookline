@@ -157,7 +157,7 @@ export default function ApiKeysPage() {
         />
       ) : list.data.data.length === 0 ? (
         <EmptyBlock
-          title="No API keys"
+          title="No API keys yet"
           description="Create a key so integrations can call the REST API."
           testId="api-keys-empty"
         />

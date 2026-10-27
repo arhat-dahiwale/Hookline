@@ -1,0 +1,14 @@
+# gitleaks config (secret scanning). Extends the default rules; the demo
+# passwords in tests/docs use obviously-fake example domains.
+[extend]
+useDefault = true
+
+[allowlist]
+  description = 'Hookline test fixtures and docs placeholders'
+  paths = [
+    '(.*?).md$',
+    'lockfile',
+  ]
+  regexes = [
+    '''change-me|replace-with-generated|password-123456|demo-password''',
+  ]

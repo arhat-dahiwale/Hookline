@@ -333,6 +333,43 @@ describe('events API', () => {
     expect(conflict.json().error.code).toBe('idempotency_key_reuse');
   });
 
+  it('resolves an idempotency race from Postgres when the Redis key was evicted', async () => {
+    // Same payload, cache evicted after the first ingest: the insert hits the
+    // unique constraint, the catch branch resolves the winner from Postgres.
+    const redis = test.app.get(RedisService);
+    const key = `idem-${crypto.randomUUID()}`;
+    const first = await inject(
+      'POST',
+      '/v1/events',
+      { type: 'a.b', payload: { n: 1 } },
+      { 'idempotency-key': key },
+    );
+    expect(first.statusCode).toBe(202);
+    await redis.client.del(`hl:idem:${orgId}:${key}`);
+
+    const raced = await inject(
+      'POST',
+      '/v1/events',
+      { type: 'a.b', payload: { n: 1 } },
+      { 'idempotency-key': key },
+    );
+    expect(raced.statusCode).toBe(200);
+    expect(raced.headers['idempotent-replay']).toBe('true');
+    expect(raced.json().id).toBe(first.json().id);
+
+    // Same eviction but a different payload: the Postgres-side hash check
+    // rejects the reuse.
+    await redis.client.del(`hl:idem:${orgId}:${key}`);
+    const conflict = await inject(
+      'POST',
+      '/v1/events',
+      { type: 'a.b', payload: { n: 3 } },
+      { 'idempotency-key': key },
+    );
+    expect(conflict.statusCode).toBe(422);
+    expect(conflict.json().error.code).toBe('idempotency_key_reuse');
+  });
+
   it('lists events with cursor pagination and reads one with payload', async () => {
     for (let i = 0; i < 5; i += 1) {
       await inject('POST', '/v1/events', { type: 'page.event', payload: { i } });

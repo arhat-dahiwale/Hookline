@@ -22,7 +22,8 @@
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "proto:gen": "pnpm --filter @hookline/proto proto:gen",
-    "check:dashboards": "node scripts/check-dashboards.mjs"
+    "check:dashboards": "node scripts/check-dashboards.mjs",
+    "test:cov": "pnpm --filter @hookline/server test:cov"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",

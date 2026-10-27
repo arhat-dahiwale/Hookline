@@ -101,6 +101,7 @@ export default tseslint.config(
         process: 'readonly',
         console: 'readonly',
         URL: 'readonly',
+        Buffer: 'readonly',
         fetch: 'readonly',
         __ENV: 'readonly',
         __ITER: 'readonly',

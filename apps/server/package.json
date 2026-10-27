@@ -12,7 +12,8 @@
     "dev": "node scripts/dev.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "test:int": "vitest run --config vitest.config.int.ts"
+    "test:int": "vitest run --config vitest.config.int.ts",
+    "test:cov": "vitest run --coverage && vitest run --config vitest.config.int.ts --coverage"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "9.1.0",
@@ -58,6 +59,7 @@
     "@types/node": "24.19.2",
     "@types/pg": "8.23.1",
     "@types/ws": "8.18.2",
+    "@vitest/coverage-v8": "4.1.12",
     "drizzle-kit": "0.31.11",
     "light-my-request": "6.8.0",
     "testcontainers": "12.2.1",

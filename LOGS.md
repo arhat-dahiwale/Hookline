@@ -858,3 +858,49 @@ Append-only. **After every run**, add a new entry at the **bottom** using the te
 ### Next steps
 
 - Phase 14: coverage thresholds, OpenAPI contract tests, cross-protocol authorization matrix, Playwright suite, GitHub Actions (syntax-validated only), Dependabot, secret scanning, dependency audit
+
+## Run 016: 2026-10-28 (+05:30)
+
+- **Agent / tool:** zcode, GLM-5.3
+- **Phase / task:** Phase 14: testing & CI/CD hardening (all tasks); started Phase 15 (LICENSE, CONTRIBUTING, API.md verification samples)
+- **Status:** completed
+
+### What I did (resumed from an interrupted run's uncommitted work)
+
+- **STEP 0 orientation:** the working tree held a coherent Phase 14 start (coverage configs, contract/authz-matrix/roles-guard specs, `.github/` workflows, `.gitleaks.toml`, pnpm overrides) with no LOGS entry. Verified it instead of discarding it. Removed 2 stale `hookline` compose containers (Exited 255); left other projects' containers untouched
+- **pnpm 12 build-approvals fix:** install failed with `ERR_PNPM_IGNORED_BUILDS` (msgpackr-extract missing from the new `allowBuilds` map; `@scarf/scarf` = swagger-ui telemetry, deliberately blocked). Added both to `allowBuilds` in `pnpm-workspace.yaml`
+- **CRITICAL COVERAGE BUG FOUND AND FIXED:** the interrupted run had placed `coverage: {...}` at the TOP LEVEL of `vitest.config.ts`/`vitest.config.int.ts`, where Vitest silently ignores it — thresholds were never evaluated (proven: `lines: 200` passed with exit 0). Moved coverage into `test.coverage` in both configs; negative test now fails with exit 1 as required. Int config also excludes `**/*.spec.ts`, barrel `**/index.ts`, and the Better Auth GENERATED `auth-schema.ts` from measurement
+- **Coverage enforced and met (real numbers, run 2026-10-28, "definitive run 4"):** 20/20 files, 112/112 tests, exit 0. Global core-module lines **94.39%** (≥90 required). Per-file: signing 100, session.guard 100, roles.guard 100, api-key.guard 100, breaker 98.8, delivery-processor 90.6, events.service 94.4 (idempotency included). Unit config: signing 100, backoff 100
+- **New tests to close real gaps** (added tests rather than lowering thresholds): `test/int/roles-guard.spec.ts` (3 forbidden branches vs real AuthService+DB — lines 42/46/50); 2 idempotency Postgres-fallback tests in rest-api.spec.ts (cache-eviction race loser + Postgres hash-mismatch reuse); 3 SSRF end-to-end path tests (see below)
+- **Contract tests:** `test/int/contract.spec.ts` — spec structure, 4xx on every mutating op, bearer auth, and spec↔implementation drift via 405≠404 discrimination
+- **Authorization matrix:** `test/int/authz-matrix.spec.ts` — anonymous/scope/role/cross-tenant rules proven across REST, tRPC, WebSocket (close codes 4401/4403), and the internal gRPC operations in ONE suite
+- **SSRF suite hardened (production posture, gate off):** existing 6 connect-time cases retained ([::1], [::ffff:127.0.0.1], 169.254.169.254, private ranges, alternate IPv4 spellings + parser-normalization proof, hostname→private lookup). NEW: end-to-end proof through all three outbound paths — TestEndpoint, delivery processor (ingest→attempt recorded `blocked`), and replay via WorkerOperations — against a full app booted with the gate off and a loopback endpoint row inserted directly (bypassing creation-time validation on purpose)
+- **Flaky test triage:** run 1 (104 tests) failed grpc-wire.spec ("worker gRPC server never opened its port") — passes in isolation; the child worker's full Nest boot exceeded the 30s readiness deadline under 19-suite load. Fix: readiness deadline 30s→60s, hook timeout 60s→120s (readiness poll, not a sleep). Run 2 (104 tests) and run 4 (112 tests) clean back-to-back. Run 3 is NOT evidence: the shared Testcontainers Postgres/Redis lost their port mappings mid-run (Docker-side event on this laptop; every failure was ECONNREFUSED, 0 assertion failures) — re-run cleanly as run 4
+- **E2E:** 5/5 passed (5.1 min) incl. sign-in/redirects, every dashboard page, dark mode, and the full journey (sign up → create endpoint → live delivery → replay). First run failed confusingly: STALE API+web servers from an earlier session were holding ports 4000/3100 and pointing at yesterday's dead DB containers (`reuseExistingServer` silently reused them → mid-test bounce to sign-in). Killed the zombies; clean re-run passed. Lesson: the Playwright reuse flag trusts whatever answers the port
+- **CI/CD (syntax-validated only, never executed):** `.github/workflows/ci.yml` (lint, typecheck, unit, integration w/ coverage artifact, build, Docker build tagged `github.sha` + `v0.1.0` — push disabled: no registry exists), `e2e.yml` (dev compose + Playwright), `dependabot.yml` (npm + github-actions weekly), `.gitleaks.toml` (default rules + fixture allowlist), `security` job with gitleaks action + `pnpm audit --prod --audit-level high`. All three YAML files parse-validated with js-yaml
+- **Dependency audit (real run):** `pnpm audit --prod` found 2 HIGH (postcss ≤8.5.17, two advisories via better-auth→next→postcss and next→postcss) + 3 moderate. FIXED the highs by raising the pnpm override to `postcss 8.5.32` (latest 8.5.x; the interrupted run had pinned 8.5.6 — vulnerable). Accepted risk (documented): esbuild ≤0.24.2 moderate via better-auth→drizzle-kit→@esbuild-kit (dev CLI path only; not exploitable in prod runtime). Also noted: OTel `@opentelemetry/api@1.10.0` peer conflict is UNFIXABLE cleanly — the tree mixes OTel core 2.x (wants api <1.10) and 3.x (wants ≥1.10); 1.10.0 satisfies both newer groups and tracing tests pass — kept, logged as accepted risk
+- **Phase 15 progress (early):** LICENSE added (MIT — docs were silent, PRD has no licensing requirement; logged as a no-human decision), CONTRIBUTING.md written, README license line resolved + Testing & CI section + scripts table rows, API.md gained Python + Go verification samples alongside Node; Node and Python samples EXECUTED against signatures from the real `signPayload` (accept + tamper-reject; `scripts/check-samples.mjs`), Go sample REVIEWED ONLY (no Go toolchain on this machine; toolchain installs are out of bounds); empty-state copy standardized ("No API keys yet", "No members yet" — "yet" for never-created, "found" kept for filtered lists); server error messages reviewed — already consistent, no changes
+
+### Files changed
+
+- `apps/server/vitest.config.ts`, `vitest.config.int.ts` (coverage into `test.coverage` + excludes), `package.json` (server: test:cov script, coverage dep, OTel api pin kept at 1.10.0), root `package.json` (test:cov), `pnpm-workspace.yaml` (allowBuilds, postcss override 8.5.32), `pnpm-lock.yaml`
+- New tests: `src/modules/auth/roles.guard.spec.ts`, `test/int/roles-guard.spec.ts`, `test/int/authz-matrix.spec.ts`, `test/int/contract.spec.ts`; extended `test/int/ssrf-connect.spec.ts` (9 tests), `test/int/rest-api.spec.ts` (+2), `test/int/grpc-wire.spec.ts` (deadline fix)
+- CI: `.github/workflows/{ci,e2e}.yml`, `.github/dependabot.yml`, `.gitleaks.toml`
+- Phase 15: `LICENSE`, `CONTRIBUTING.md`, `README.md`, `API.md`, `scripts/check-samples.mjs`, `eslint.config.mjs` (+Buffer global for Node scripts), copy fixes in api-keys/members pages
+- Docs: `PHASES.md` (Phase 14 ticked; fixed stale Phase 12 status-table row — table said `[ ]` while all tasks were `[x]`), `README.md` (above)
+
+### Commands run and results (all real)
+
+- `pnpm lint` / `pnpm typecheck` / `pnpm build`: pass; `pnpm test`: pass (38 unit); `pnpm test:int` = run 2: 104/104 pass; definitive run 4 with coverage: **20 files / 112 tests, exit 0, thresholds met**; `pnpm test:e2e`: **5/5**; `pnpm audit --prod --audit-level high`: pass after postcss fix; `node scripts/check-samples.mjs`: node_ok/python_ok/tamper-reject all true
+- YAML validation: ci.yml, e2e.yml, dependabot.yml parse OK
+
+### Issues, risks, open questions
+
+- GitHub Actions workflows are UNEXECUTED (cannot run locally); labeled as such in file headers, README, and here
+- Docker image "build and push": tagging implemented, push impossible (no registry configured, and pushing is out of bounds for this run) — stated plainly
+- Run 3's container loss is unexplained (Docker Desktop-side); if it recurs, investigate Docker resource settings — outside this project's boundary
+- OTel api peer-range conflict and esbuild dev-path moderate: accepted risks (see above)
+
+### Next steps
+
+- Phase 15 remaining: architecture diagram verification during live demo, one-command demo end-to-end, a11y/responsive pass + screenshots, performance pass (EXPLAIN plans + bundle size), README benchmark section, final 8-doc consistency review, then AUTONOMOUS RUN SUMMARY and local `v1.0.0` tag if everything is verified

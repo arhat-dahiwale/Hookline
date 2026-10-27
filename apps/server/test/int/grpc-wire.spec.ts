@@ -87,8 +87,11 @@ beforeAll(async () => {
   worker.stdout?.on('data', (chunk) => process.stdout.write(`[worker] ${chunk}`));
   worker.stderr?.on('data', (chunk) => process.stdout.write(`[worker:err] ${chunk}`));
 
-  // Wait for the child's gRPC server to accept TCP connections.
-  const deadline = Date.now() + 30_000;
+  // Wait for the child's gRPC server to accept TCP connections. The child
+  // boots a full Nest worker; on laptop-class machines running the whole
+  // suite in parallel that boot has been observed to exceed 30 s, so the
+  // readiness deadline is 60 s (poll, not a fixed sleep).
+  const deadline = Date.now() + 60_000;
   while (Date.now() < deadline) {
     const open = await new Promise<boolean>((resolve) => {
       const socket = createConnection({ host: '127.0.0.1', port: grpcPort });
@@ -106,7 +109,7 @@ beforeAll(async () => {
     await new Promise((resolve) => setTimeout(resolve, 300));
   }
   throw new Error('worker gRPC server never opened its port');
-}, 60_000);
+}, 120_000);
 
 afterAll(async () => {
   worker?.kill('SIGTERM');

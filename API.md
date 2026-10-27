@@ -458,7 +458,11 @@ header         = "v1=" + signature
 
 The secret is the `whsec_...` value. During a rotation grace window the header contains one `v1=` value per valid secret.
 
-### Verification (Node example)
+### Verification
+
+Verify against the **raw** body, not a re-serialized one. The signed content is the timestamp header **string** joined with the raw body, so use the header value verbatim.
+
+**Node**
 
 ```js
 import crypto from 'node:crypto';
@@ -479,7 +483,77 @@ export function verify(rawBody, headers, secret, toleranceSec = 300) {
 }
 ```
 
-Verify against the **raw** body, not a re-serialized one.
+**Python**
+
+```python
+import hashlib
+import hmac
+import time
+
+
+def verify(raw_body: bytes, headers: dict, secret: str, tolerance_sec: int = 300) -> bool:
+    ts = headers.get("hookline-timestamp")
+    if ts is None or abs(time.time() - int(ts)) > tolerance_sec:
+        return False
+
+    expected = hmac.new(secret.encode(), ts.encode() + b"." + raw_body, hashlib.sha256).hexdigest()
+
+    return any(
+        hmac.compare_digest(part.removeprefix("v1="), expected)
+        for part in headers.get("hookline-signature", "").split(" ")
+    )
+```
+
+`raw_body` must be the exact request bytes as received (`await request.body()` in FastAPI before any parsing). Header maps are lowercased by ASGI servers.
+
+**Go**
+
+```go
+package hookline
+
+import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"io"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+)
+
+// Verify checks a Hookline delivery. rawBody must be the unmodified request
+// body (read it with io.ReadAll(r.Body) before any decoding).
+func Verify(rawBody []byte, headers http.Header, secret string, toleranceSec int64) bool {
+	ts := headers.Get("Hookline-Timestamp")
+	unix, err := strconv.ParseInt(ts, 10, 64)
+	if err != nil || abs64(time.Now().Unix()-unix) > toleranceSec {
+		return false
+	}
+
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte(ts))
+	mac.Write([]byte("."))
+	mac.Write(rawBody)
+	expected := hex.EncodeToString(mac.Sum(nil))
+
+	for _, part := range strings.Fields(headers.Get("Hookline-Signature")) {
+		if hmac.Equal([]byte(strings.TrimPrefix(part, "v1=")), []byte(expected)) {
+			return true
+		}
+	}
+	return false
+}
+
+func abs64(n int64) int64 {
+	if n < 0 {
+		return -n
+	}
+	return n
+}
+```
+
+`hmac.Equal` compares in constant time and tolerates differing lengths (returns false), so no manual length check is needed.
 
 ### Response semantics
 
