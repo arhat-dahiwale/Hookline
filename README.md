@@ -156,6 +156,28 @@ The api serves `/metrics` on `PORT`; a worker role serves `/metrics` on its own
 `PORT` via a standalone HTTP server. Traces are exported over OTLP when
 `OTEL_EXPORTER_OTLP_ENDPOINT` is set (unset = dropped, no outbound calls).
 
+### Testing & CI (Phase 14)
+
+Coverage is enforced, not decorative: `pnpm test:cov` runs unit + integration
+with V8 coverage and fails below **90% lines** overall on the core modules,
+with per-file floors of 100% for signing and the auth/API-key guards, 95% for
+RolesGuard, and 90% for the breaker, delivery processor, and events service
+(idempotency). Measured on the full suite: **94.4% lines** across the included
+core modules (2026-10-28, see LOGS.md Run 016).
+
+Security suites run with the production posture (`ALLOW_INSECURE_ENDPOINTS`
+off): connect-time SSRF blocks loopback/private/link-local/metadata targets,
+IPv6 and IPv4-mapped literals, alternate IPv4 spellings, and hostnames that
+resolve privately — proven through every outbound path (test send, delivery
+processor, replay). An authorization matrix covers REST, tRPC, WebSocket and
+internal gRPC in one place (`apps/server/test/int/authz-matrix.spec.ts`).
+
+GitHub Actions workflows live in `.github/` (lint, typecheck, unit,
+integration with Testcontainers, build, Playwright E2E, Docker image build
+tagged by commit and version, Dependabot, gitleaks secret scanning, and a
+`pnpm audit` gate at high severity). They are syntax-validated only — nothing
+in this project has executed them remotely (LOGS.md Run 016).
+
 ### Run the full demo topology (Phase 13, verified)
 
 ```bash
@@ -195,17 +217,19 @@ docker run --rm -v "$(pwd)/scripts/load:/scripts:ro" -v "$(pwd)/scripts/load/out
 
 ## Common scripts
 
-| Command                                | Description                                                     |
-| -------------------------------------- | --------------------------------------------------------------- |
-| `pnpm dev`                             | Run web and server in watch mode                                |
-| `pnpm build`                           | Build all apps and packages                                     |
-| `pnpm lint` / `pnpm typecheck`         | Lint and type-check the repo                                    |
-| `pnpm test`                            | Unit tests                                                      |
-| `pnpm test:int`                        | Integration tests (Testcontainers)                              |
-| `pnpm test:e2e`                        | Playwright E2E (boots API + web, needs the dev compose running) |
-| `pnpm db:generate` / `pnpm db:migrate` | Generate and apply migrations                                   |
-| `pnpm db:seed`                         | Seed demo data                                                  |
-| `pnpm proto:gen`                       | Generate gRPC code from `.proto` files                          |
+| Command                                | Description                                                       |
+| -------------------------------------- | ----------------------------------------------------------------- |
+| `pnpm dev`                             | Run web and server in watch mode                                  |
+| `pnpm build`                           | Build all apps and packages                                       |
+| `pnpm lint` / `pnpm typecheck`         | Lint and type-check the repo                                      |
+| `pnpm test`                            | Unit tests                                                        |
+| `pnpm test:int`                        | Integration tests (Testcontainers)                                |
+| `pnpm test:cov`                        | Unit + integration with coverage; core-module thresholds enforced |
+| `pnpm test:e2e`                        | Playwright E2E (boots API + web, needs the dev compose running)   |
+| `pnpm db:generate` / `pnpm db:migrate` | Generate and apply migrations                                     |
+| `pnpm db:seed`                         | Seed demo data                                                    |
+| `pnpm proto:gen`                       | Generate gRPC code from `.proto` files                            |
+| `pnpm check:dashboards`                | Fail if a Grafana dashboard references an unregistered metric     |
 
 ## Demo script (the "wow" moment)
 
@@ -230,4 +254,4 @@ docker run --rm -v "$(pwd)/scripts/load:/scripts:ro" -v "$(pwd)/scripts/load/out
 
 ## License
 
-TBD
+[MIT](./LICENSE) — see also [CONTRIBUTING.md](./CONTRIBUTING.md).

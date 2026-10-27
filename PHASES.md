@@ -20,9 +20,9 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 | 9     | Real-time (WebSocket)         | [x]    |
 | 10    | Internal gRPC                 | [x]    |
 | 11    | Analytics                     | [x]    |
-| 12    | Observability                 | [ ]    |
+| 12    | Observability                 | [x]    |
 | 13    | Scale topology & chaos demo   | [x]    |
-| 14    | Testing & CI/CD hardening     | [ ]    |
+| 14    | Testing & CI/CD hardening     | [x]    |
 | 15    | Docs, polish & launch         | [ ]    |
 
 > Tests are written **within each phase**. Phase 14 is for gaps, hardening, and CI polish, not for "adding tests later".
@@ -253,14 +253,14 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 **Goal:** confidence and automation.
 **Exit criteria:** CI is green on a fresh clone, and coverage on core modules meets the targets in AGENTS.md.
 
-- [ ] Coverage reports and thresholds for core modules (delivery engine, signing, breaker, idempotency)
-- [ ] Contract tests: OpenAPI spec vs. implementation
-- [ ] Playwright E2E for critical flows (sign-in, create endpoint, see live delivery, replay)
-- [ ] GitHub Actions: lint, typecheck, unit, integration (Testcontainers), build
-- [ ] Docker image build and push (tagged by commit and version)
-- [ ] Dependency audit and Dependabot/Renovate
-- [ ] Security checks: secret scanning, SSRF test suite, authorization matrix tests
-- [ ] Flaky test triage
+- [x] Coverage reports and thresholds for core modules (delivery engine, signing, breaker, idempotency)
+- [x] Contract tests: OpenAPI spec vs. implementation
+- [x] Playwright E2E for critical flows (sign-in, create endpoint, see live delivery, replay)
+- [x] GitHub Actions: lint, typecheck, unit, integration (Testcontainers), build
+- [x] Docker image build and push (tagged by commit and version)
+- [x] Dependency audit and Dependabot/Renovate
+- [x] Security checks: secret scanning, SSRF test suite, authorization matrix tests
+- [x] Flaky test triage
 
 ## Phase 15: Docs, polish & launch
 

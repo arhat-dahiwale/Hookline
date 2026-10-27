@@ -35,5 +35,30 @@ export default defineConfig({
     // One file at a time: suites share the container-backed Postgres/Redis.
     fileParallelism: false,
     pool: 'forks',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json-summary'],
+      include: [
+        'src/modules/delivery-engine/**',
+        'src/modules/auth/**',
+        'src/modules/events/**',
+        'src/modules/api-keys/**',
+      ],
+      // Spec files, barrel re-exports, and the Better Auth GENERATED schema
+      // (AGENTS.md: never hand-edited) carry no hand-written logic to measure.
+      exclude: ['**/*.spec.ts', '**/index.ts', 'src/modules/auth/auth-schema.ts'],
+      thresholds: {
+        lines: 90,
+        // Named core modules (AGENTS.md section 6): delivery engine (incl.
+        // breaker, processor, signing), auth guards, idempotency (events).
+        'src/modules/delivery-engine/breaker.ts': { lines: 90 },
+        'src/modules/delivery-engine/delivery-processor.ts': { lines: 90 },
+        'src/modules/delivery-engine/signing.ts': { lines: 100 },
+        'src/modules/auth/session.guard.ts': { lines: 100 },
+        'src/modules/auth/roles.guard.ts': { lines: 95 },
+        'src/modules/api-keys/api-key.guard.ts': { lines: 100 },
+        'src/modules/events/events.service.ts': { lines: 90 },
+      },
+    },
   },
 });

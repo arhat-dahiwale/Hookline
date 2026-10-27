@@ -1,0 +1,35 @@
+# Playwright E2E (dashboard journey). The suite itself runs locally and in
+# CI; the WORKFLOW file is authored and syntax-validated in Phase 14 but has
+# never been executed by GitHub Actions (nothing runs remotely in this
+# project) — see LOGS.md Run 016.
+name: e2e
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Start dev dependencies (postgres + redis)
+        run: docker compose -f docker-compose.dev.yml up -d --wait
+      - run: pnpm db:migrate
+      - run: pnpm exec playwright install chromium --with-deps
+      - run: pnpm test:e2e
+        env:
+          ALLOW_INSECURE_ENDPOINTS: true
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results/

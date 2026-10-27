@@ -29,5 +29,18 @@ export default defineConfig({
   test: {
     include: ['src/**/*.spec.ts'],
     environment: 'node',
+    coverage: {
+      provider: 'v8',
+      // Bind thresholds to exactly the files unit tests own end to end;
+      // service-module coverage is enforced by the integration config.
+      include: ['src/modules/delivery-engine/signing.ts', 'src/modules/delivery-queue/backoff.ts'],
+      reporter: ['text', 'json-summary'],
+      thresholds: {
+        // Core modules with unit-pure logic (AGENTS.md section 6).
+        lines: 90,
+        'src/modules/delivery-engine/signing.ts': { lines: 100 },
+        'src/modules/delivery-queue/backoff.ts': { lines: 100 },
+      },
+    },
   },
 });

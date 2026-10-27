@@ -10,12 +10,20 @@ allowBuilds:
   esbuild: true
   protobufjs: true
   ssh2: false
+  # msgpackr (BullMQ) optional native accelerator — safe, kept enabled.
+  msgpackr-extract: true
+  # swagger-ui-dist telemetry postinstall — deliberately never allowed.
+  '@scarf/scarf': false
 
 minimumReleaseAgeExclude:
   - bullmq@6.4.1
+  - postcss@8.5.32
 
 onlyBuiltDependencies:
   - esbuild
   - protobufjs
   - msgpackr-extract
   - '@swc/core'
+
+overrides:
+  postcss: 8.5.32
