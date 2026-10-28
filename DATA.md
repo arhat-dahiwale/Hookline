@@ -247,9 +247,8 @@ All keys use the prefix `hl:`. BullMQ uses `hl:bull` as its prefix.
 | `hl:idem:{orgId}:{key}`       | string              | 24 h        | Maps to the event ID and payload hash (fast path)   |
 | `hl:apikey:{prefix}`          | hash                | 60 s        | Cached key lookup (org, scopes, hash, revoked)      |
 | `hl:org:{orgId}`              | pub/sub channel     | n/a         | Real-time updates for an organization               |
-| `hl:lock:{name}`              | string              | short       | Distributed locks for maintenance tasks             |
 
-Rules: Redis state is either reconstructable from Postgres or safe to lose. Never store the only copy of anything durable in Redis.
+Rules: Redis state is either reconstructable from Postgres or safe to lose. Never store the only copy of anything durable in Redis. Scheduled maintenance runs through BullMQ job schedulers (single firing across replicas); the codebase uses no distributed locks.
 
 ## 8. Migration rules
 

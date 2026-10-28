@@ -23,7 +23,7 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 | 12    | Observability                 | [x]    |
 | 13    | Scale topology & chaos demo   | [x]    |
 | 14    | Testing & CI/CD hardening     | [x]    |
-| 15    | Docs, polish & launch         | [ ]    |
+| 15    | Docs, polish & launch         | [x]    |
 
 > Tests are written **within each phase**. Phase 14 is for gaps, hardening, and CI polish, not for "adding tests later".
 
