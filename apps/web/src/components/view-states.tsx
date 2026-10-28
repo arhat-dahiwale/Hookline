@@ -15,6 +15,14 @@ export function LoadingBlock({ label }: { label: string }) {
   );
 }
 
+/**
+ * True when the tRPC error is the signed-in-but-no-organization case; those
+ * get a first-run block, not an error (nothing failed — nothing is set up).
+ */
+export function isOrgRequiredError(error: { message?: string } | null | undefined): boolean {
+  return error?.message === 'no active organization';
+}
+
 /** Empty state with optional call to action. */
 export function EmptyBlock({
   title,

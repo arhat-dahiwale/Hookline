@@ -6,7 +6,7 @@ import { useState } from 'react';
 
 import { LiveLog } from '@/components/live-log';
 import { DeliveryStatusBadge } from '@/components/status-badge';
-import { EmptyBlock, ErrorBlock, LoadingBlock } from '@/components/view-states';
+import { EmptyBlock, ErrorBlock, LoadingBlock, isOrgRequiredError } from '@/components/view-states';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -115,11 +115,19 @@ export default function DeliveriesPage() {
       {list.isPending ? (
         <LoadingBlock label="Loading deliveries" />
       ) : list.isError ? (
-        <ErrorBlock
-          title="Could not load deliveries"
-          error={list.error}
-          onRetry={() => void list.refetch()}
-        />
+        isOrgRequiredError(list.error) ? (
+          <EmptyBlock
+            title="Create an organization to get started"
+            description="Deliveries live inside an organization. Create or switch to one from the org switcher."
+            testId="org-required"
+          />
+        ) : (
+          <ErrorBlock
+            title="Could not load deliveries"
+            error={list.error}
+            onRetry={() => void list.refetch()}
+          />
+        )
       ) : list.data.data.length === 0 ? (
         <EmptyBlock
           title="No deliveries found"

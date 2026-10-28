@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Loader2, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 
-import { EmptyBlock, ErrorBlock, LoadingBlock } from '@/components/view-states';
+import { EmptyBlock, ErrorBlock, LoadingBlock, isOrgRequiredError } from '@/components/view-states';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -77,6 +77,15 @@ export default function MembersPage() {
 
   if (members.isPending) return <LoadingBlock label="Loading members" />;
   if (members.isError) {
+    if (isOrgRequiredError(members.error)) {
+      return (
+        <EmptyBlock
+          title="Create an organization to get started"
+          description="Members belong to an organization. Create or switch to one from the org switcher."
+          testId="org-required"
+        />
+      );
+    }
     return (
       <ErrorBlock
         title="Could not load members"

@@ -193,7 +193,9 @@ api/worker replicas per request (Docker DNS) so killed replicas are routed
 around within ~5s.
 
 **Chaos demo (zero lost events, run 2026-10-26 on 12 CPU / 7.6 GB host,
-3 api + 2 worker replicas):**
+3 api + 2 worker replicas). Caveat: the load generator and the system under
+test share one laptop, so throughput numbers are conservative — the demo
+proves correctness under kills, not peak capacity:**
 
 ```bash
 node scripts/chaos/run-chaos.mjs --duration 150 --kills 4 --tracked-rate 4 --k6-rate 40
@@ -209,6 +211,9 @@ This run also exposed and fixed a real gap: deliveries orphaned in
 `in_progress` by a worker SIGKILL are now healed by the reconciler
 (`requeueOrphanedInProgress`, regression-tested in
 `apps/server/test/int/resilience.spec.ts`).
+
+A repeat via `pnpm demo` on 2026-10-28 (same host): 294 tracked events
+through 2 SIGKILLs (1 api, 1 worker) — **PASS, zero lost events**.
 
 ```bash
 # Standalone load without chaos:
@@ -231,6 +236,23 @@ docker run --rm -v "$(pwd)/scripts/load:/scripts:ro" -v "$(pwd)/scripts/load/out
 | `pnpm proto:gen`                       | Generate gRPC code from `.proto` files                            |
 | `pnpm check:dashboards`                | Fail if a Grafana dashboard references an unregistered metric     |
 
+## One-command demo
+
+Verified end to end 2026-10-28 (LOGS.md Run 016): one command brings up the
+full topology through nginx, registers a healthy and a failing endpoint,
+sends events, shows the live WebSocket log, replays a delivery, runs the
+zero-loss chaos step (kills api/worker replicas under load), prints summary
+counts, and shuts everything down:
+
+```bash
+pnpm demo
+```
+
+Exits non-zero if ANY step fails, including the zero-lost-events check. If
+host port 3001 is taken the demo publishes Grafana on **3011** instead
+(`docker-compose.demo-override.yml`); 8080 (nginx) and 9090 (Prometheus) must
+also be free.
+
 ## Demo script (the "wow" moment)
 
 1. Start the full topology (3 API replicas, 2 workers).
@@ -239,6 +261,25 @@ docker run --rm -v "$(pwd)/scripts/load:/scripts:ro" -v "$(pwd)/scripts/load/out
 4. Watch the failing endpoint retry with backoff, then trip its circuit breaker.
 5. `docker kill` a worker mid-delivery: no events are lost and deliveries resume.
 6. Click **Replay** on a failed delivery after fixing the endpoint.
+
+## Screenshots
+
+Captured from real runs (see `docs/screenshots/` for the full set,
+including accessibility/responsive evidence):
+
+![Dashboard overview](docs/screenshots/overview.png)
+
+![Endpoints with live deliveries](docs/screenshots/endpoints-populated.png)
+
+![Delivery detail with attempt timeline](docs/screenshots/delivery-detail.png)
+
+![Grafana delivery dashboard](docs/screenshots/grafana-delivery.png)
+
+Dark mode and a 390px-wide viewport:
+
+![Dark mode](docs/screenshots/a11y-dark-overview.png)
+
+![Mobile width](docs/screenshots/a11y-mobile-overview.png)
 
 ## Documentation
 

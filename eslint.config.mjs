@@ -110,6 +110,10 @@ export default tseslint.config(
         clearTimeout: 'readonly',
         setInterval: 'readonly',
         clearInterval: 'readonly',
+        // Playwright scripts: page.evaluate callbacks run in the browser.
+        document: 'readonly',
+        window: 'readonly',
+        getComputedStyle: 'readonly',
       },
     },
   },
