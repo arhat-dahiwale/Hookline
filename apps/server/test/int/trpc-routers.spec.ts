@@ -190,10 +190,18 @@ describe('deliveries router authorization', () => {
     expect(got.status).toBe(200);
     expect((got.body.data as { endpointId: string }).endpointId).toBe(endpointId);
 
-    const attempts = await trpc(member, 'deliveries.attempts', { id: delivery.id });
-    expect(attempts.status).toBe(200);
-    // ROLE=all test app delivers to the /ok receiver, so attempt 1 exists.
-    const attemptRows = (attempts.body.data as { data: { attemptNumber: number }[] }).data;
+    // ROLE=all test app delivers to the /ok receiver, but the worker records
+    // the attempt asynchronously — poll for it (same pattern as
+    // waitForDelivery in delivery-engine.spec.ts) instead of racing it.
+    const deadline = Date.now() + 30_000;
+    let attemptRows: { attemptNumber: number }[] = [];
+    while (Date.now() < deadline) {
+      const attempts = await trpc(member, 'deliveries.attempts', { id: delivery.id });
+      expect(attempts.status).toBe(200);
+      attemptRows = (attempts.body.data as { data: { attemptNumber: number }[] }).data;
+      if (attemptRows.length >= 1) break;
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
     expect(attemptRows.length).toBeGreaterThanOrEqual(1);
     expect(attemptRows[0]!.attemptNumber).toBe(1);
 
