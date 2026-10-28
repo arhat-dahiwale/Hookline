@@ -1,9 +1,11 @@
-// Accessibility + responsive audit (Phase 15). Boots nothing itself: expects
-// the API on :4000 and the web dev server on :3100 (Playwright webServer in
-// the main config handles that when run via `pnpm test:e2e`; this script is
-// run with the servers already up). Produces docs/screenshots/a11y-*.png and
-// logs findings as JSON.
+// Accessibility + responsive audit (Phase 15): axe-core scans of the main
+// pages plus keyboard/landmark/theme/mobile checks. Boots nothing itself:
+// expects the API on :4000 and the web dev server on :3100 (Playwright
+// webServer in the main config handles that when run via `pnpm test:e2e`;
+// this script is run with the servers already up). Produces
+// docs/screenshots/a11y-*.png and logs findings as JSON.
 import { chromium } from '@playwright/test';
+import { AxeBuilder } from '@axe-core/playwright';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -89,6 +91,21 @@ note(
   landmarks.nav && landmarks.main && !!landmarks.h1,
   landmarks,
 );
+
+// 3b. axe-core scan of the main pages (WCAG rules; the audit fails only on
+// serious/critical violations, everything found is recorded).
+for (const path of ['/overview', '/endpoints', '/deliveries']) {
+  await page.goto(`${BASE}${path}`);
+  await page.waitForTimeout(1200);
+  const axe = await new AxeBuilder({ page }).analyze();
+  const blocking = axe.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
+  note(
+    `axe scan (${path})`,
+    path,
+    blocking.length === 0,
+    axe.violations.map((v) => ({ id: v.id, impact: v.impact, nodes: v.nodes.length })),
+  );
+}
 
 // 4. Page pages render (light) — full set for evidence.
 for (const [path, name] of [

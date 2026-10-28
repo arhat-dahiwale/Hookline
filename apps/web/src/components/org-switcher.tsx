@@ -77,7 +77,9 @@ export function OrgSwitcher({ userName }: { userName: string }) {
         <Button
           variant="outline"
           className="w-full justify-between"
-          aria-label="Switch organization"
+          // Accessible name must contain the visible text (axe
+          // label-content-name-mismatch): the org name is what's on screen.
+          aria-label={`Switch organization: ${activeOrg?.name ?? 'No organization selected'}`}
           data-testid="org-switcher"
         >
           <span className="flex min-w-0 items-center gap-2">
