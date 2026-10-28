@@ -35,6 +35,24 @@
     }
   },
   {
+    "check": "axe scan (/overview)",
+    "page": "/overview",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "check": "axe scan (/endpoints)",
+    "page": "/endpoints",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "check": "axe scan (/deliveries)",
+    "page": "/deliveries",
+    "ok": true,
+    "detail": []
+  },
+  {
     "check": "pages render light mode",
     "page": "/overview,/endpoints,/deliveries",
     "ok": true,

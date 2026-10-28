@@ -332,7 +332,11 @@ async function main() {
   await k6.exited;
 
   // Drain: poll until no non-terminal deliveries remain (bounded wait).
-  const drainDeadline = Date.now() + 240_000;
+  // The bound must exceed the reconciler's in_progress orphan grace
+  // (IN_PROGRESS_GRACE_MS = 5 min in maintenance.ts): a worker SIGKILLed
+  // late in the load window leaves an orphan that only becomes retrying
+  // after the grace, so anything shorter reports a false non-terminal.
+  const drainDeadline = Date.now() + 420_000;
   let pending;
   do {
     pending = Number(

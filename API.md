@@ -473,7 +473,7 @@ export function verify(rawBody, headers, secret, toleranceSec = 300) {
 
   const expected = crypto.createHmac('sha256', secret).update(`${ts}.${rawBody}`).digest('hex');
 
-  return headers['hookline-signature'].split(' ').some((part) => {
+  return (headers['hookline-signature'] ?? '').split(' ').some((part) => {
     const sig = part.replace(/^v1=/, '');
     return (
       sig.length === expected.length &&

@@ -72,6 +72,8 @@ Located in `apps/server/src/modules/`. Each module exposes a public service inte
 | `settings`        | Org-level preferences (retention override)                                 | `org_settings`                    | audit, platform                                          |
 | `trpc`            | tRPC protocol layer for the dashboard (context, role middleware, routers)  | none (uses services)              | auth, endpoints, deliveries, delivery-engine, platform   |
 | `worker-ops`      | WorkerOperationsService adapters: in-process (worker/all) and gRPC (api)   | none (uses services)              | delivery-engine, deliveries, events, endpoints, platform |
+| `api-docs`        | OpenAPI document, `/docs` Swagger UI, `/openapi.json`                      | none                              | platform                                                 |
+| `observability`   | Prometheus `/metrics`, the worker's standalone metrics server, tracing     | none                              | platform                                                 |
 | `health`          | Liveness and readiness                                                     | none                              | platform                                                 |
 | `platform`        | Config, logger, DB, Redis, telemetry, unit-of-work, errors                 | none                              | none                                                     |
 

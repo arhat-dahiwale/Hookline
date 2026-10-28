@@ -2,7 +2,7 @@
 
 > Reliable webhook delivery infrastructure: signed payloads, smart retries, circuit breaking, live delivery logs, and one-click replay.
 
-**Status:** Phase 0 (see [PHASES.md](./PHASES.md)). Commands below become available as phases are completed.
+**Status:** v1.0.0 — all phases complete (see [PHASES.md](./PHASES.md)).
 
 ---
 
@@ -238,7 +238,7 @@ docker run --rm -v "$(pwd)/scripts/load:/scripts:ro" -v "$(pwd)/scripts/load/out
 
 ## One-command demo
 
-Verified end to end 2026-10-28 (LOGS.md Run 016): one command brings up the
+Verified end to end 2026-10-28 (LOGS.md Run 017): one command brings up the
 full topology through nginx, registers a healthy and a failing endpoint,
 sends events, shows the live WebSocket log, replays a delivery, runs the
 zero-loss chaos step (kills api/worker replicas under load), prints summary
