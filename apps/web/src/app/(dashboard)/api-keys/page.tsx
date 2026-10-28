@@ -10,7 +10,7 @@ import { z } from 'zod';
 import { createApiKeySchema, API_KEY_SCOPES, type ApiKeyScope } from '@hookline/shared';
 
 import { SecretDialog } from '@/components/secret-dialog';
-import { EmptyBlock, ErrorBlock, LoadingBlock } from '@/components/view-states';
+import { EmptyBlock, ErrorBlock, LoadingBlock, isOrgRequiredError } from '@/components/view-states';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -150,11 +150,19 @@ export default function ApiKeysPage() {
       {list.isPending ? (
         <LoadingBlock label="Loading API keys" />
       ) : list.isError ? (
-        <ErrorBlock
-          title="Could not load API keys"
-          error={list.error}
-          onRetry={() => void list.refetch()}
-        />
+        isOrgRequiredError(list.error) ? (
+          <EmptyBlock
+            title="Create an organization to get started"
+            description="API keys belong to an organization. Create or switch to one from the org switcher."
+            testId="org-required"
+          />
+        ) : (
+          <ErrorBlock
+            title="Could not load API keys"
+            error={list.error}
+            onRetry={() => void list.refetch()}
+          />
+        )
       ) : list.data.data.length === 0 ? (
         <EmptyBlock
           title="No API keys yet"

@@ -242,6 +242,7 @@ NestJS event emitter, used for same-process reactions (for example, `delivery.at
 | postgres                          | 1            | Volume-backed                     |
 | redis                             | 1            | AOF persistence on                |
 | migrate                           | 1 (one-shot) | Runs migrations before app start  |
+| receiver                          | 1            | Demo-only webhook target (200s)   |
 | otel-collector, tempo/jaeger      | 1            | Traces                            |
 | prometheus, grafana               | 1            | Metrics and dashboards            |
 | postgres-exporter, redis-exporter | 1            | Infra metrics                     |

@@ -267,13 +267,13 @@ Mark tasks `[x]` when **done and verified** (code, tests, and docs updated). Wor
 **Goal:** make it presentable.
 **Exit criteria:** a stranger can clone, run the demo, and understand the system in 15 minutes.
 
-- [ ] README polish: screenshots, GIF of live log, benchmark results
-- [ ] Verification code samples for customers (Node, Python, Go) in API.md
-- [ ] Architecture diagrams finalized
-- [ ] Seed/demo data and a one-command demo
-- [ ] Accessibility and responsive pass on the dashboard
-- [ ] Error-message and empty-state copy review
-- [ ] Performance pass (indexes, slow-query review, bundle size)
-- [ ] License and contributing guide
-- [ ] Final docs consistency review (all eight files match the code)
-- [ ] Tag `v1.0.0`
+- [x] README polish: screenshots, GIF of live log, benchmark results
+- [x] Verification code samples for customers (Node, Python, Go) in API.md
+- [x] Architecture diagrams finalized
+- [x] Seed/demo data and a one-command demo
+- [x] Accessibility and responsive pass on the dashboard
+- [x] Error-message and empty-state copy review
+- [x] Performance pass (indexes, slow-query review, bundle size)
+- [x] License and contributing guide
+- [x] Final docs consistency review (all eight files match the code)
+- [x] Tag `v1.0.0`

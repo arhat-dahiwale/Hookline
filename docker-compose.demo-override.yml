@@ -1,0 +1,8 @@
+# Demo-run port override: the host may already have a Grafana on 3001 from
+# another project (Hookline may not touch it). The !override tag REPLACES the
+# port list (compose would otherwise append); published demo ports become
+# grafana 3011. Documented in README (one-command demo) and .env.example.
+services:
+  grafana:
+    ports: !override
+      - '3011:3000'

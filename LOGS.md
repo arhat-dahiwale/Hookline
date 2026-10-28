@@ -904,3 +904,35 @@ Append-only. **After every run**, add a new entry at the **bottom** using the te
 ### Next steps
 
 - Phase 15 remaining: architecture diagram verification during live demo, one-command demo end-to-end, a11y/responsive pass + screenshots, performance pass (EXPLAIN plans + bundle size), README benchmark section, final 8-doc consistency review, then AUTONOMOUS RUN SUMMARY and local `v1.0.0` tag if everything is verified
+
+## Run 017: 2026-10-28 (+05:30)
+
+- **Agent / tool:** zcode, GLM-5.3
+- **Phase / task:** Phase 15: docs, polish & launch (all tasks)
+- **Status:** completed
+
+### What I did
+
+- **One-command demo (`pnpm demo`, `scripts/demo/run-demo.mjs`):** brings up the FULL topology through nginx, registers one healthy + one failing endpoint (closed port on the demo receiver exercises retry/backoff), sends events, prints live WebSocket envelopes, replays a delivery, runs the Phase 13 chaos script as a child process, prints org-scoped summary counts from this project's postgres container, then tears down. Non-zero exit on ANY failure, teardown on failure too.
+  - REAL run results (2026-10-28, exit 0): topology healthy behind nginx; live log captured 14 envelopes over WS; 6 events, 7 deliveries, 6 succeeded in the demo org; replay queued (dlv_...S4 -> dlv_...H70); chaos step PASS — zero lost events (294 tracked events through 2 SIGKILLs: 1 api, 1 worker); topology shut down cleanly.
+  - Failed attempts recorded honestly: (1) Grafana host port 3001 was held by ANOTHER project's container — untouchable per rules; fixed with `docker-compose.demo-override.yml` shifting Grafana to 3011 (compose merges port lists by appending, so the override uses the `!override` YAML tag to REPLACE the list); (2) demo API key initially lacked `endpoints:write` (403); (3) WS envelope fields are top-level (`deliveryId`/`status`), not nested; (4) delivery replay returns 202, not 200/201; (5) summary query used `docker compose exec` with a container name — compose exec wants a SERVICE, switched to raw `docker exec` on this project's postgres container.
+- **Accessibility & responsive pass (browser, real Chromium run):** `e2e/a11y-audit.mjs` — 9/9 checks pass: icon buttons have accessible names; keyboard focus lands on interactive elements with a visible indicator; landmarks (nav/main) + h1; light + dark render; theme toggle works; no horizontal overflow at 390px with hamburger nav. Evidence PNGs (all < 110 KB) in `docs/screenshots/a11y-*.png` + `a11y-findings.json`.
+  - TWO REAL FINDINGS fixed: (1) a signed-in user with NO organization saw a raw red error block "Could not load deliveries — no active organization" on data pages; now every data page (deliveries, events, endpoints, api-keys, members, analytics) shows a friendly first-run EmptyBlock ("Create an organization to get started…", testId `org-required`) — before/after evidence: `a11y-dark-overview.png` (before, dark) and `a11y-org-required.png` (after); (2) stale copy on the Overview page ("Placeholder dashboard — stats and charts land in Phase 11") replaced with a truthful description + updated the file's doc comment.
+- **Performance pass:** EXPLAIN (ANALYZE) on the live demo database (7,332 events) — deliveries list uses `deliveries_org_created_idx` (0.43 ms), events by org+type uses `events_org_type_created_idx` (0.49 ms), reconciler pending feed uses partial `deliveries_pending_idx` (0.10 ms), attempt timeline uses the unique `(delivery_id, attempt_number)` index, analytics rollup scans via the org+started_at index (~2.9 ms over 1,484 rows). Every hot path hits its intended index; no missing indexes found; schema matches DATA.md exactly. Web bundle (next build): shared First Load JS 103 kB; heaviest route 322 kB (endpoints/api-keys/events pages), analytics 296 kB (recharts) — all within a healthy dashboard budget; no route above ~1/3 of a 1 MB budget.
+- **README polish:** screenshots gallery embedded (6 PNGs incl. dark + mobile), "one-command demo" section, chaos-benchmark caveat added (load generator and system under test share one laptop — correctness demo, not peak capacity), today's repeat chaos data point, scripts table rows for `test:cov` and `check:dashboards`, License section resolved (MIT + CONTRIBUTING link). NO GIF: nothing on this machine records one and installing screen recorders is out of bounds — screenshots instead (allowed by the task).
+- **Docs consistency review (all eight):** stale-marker sweep (TBD/TODO/placeholder) clean — the two remaining hits are factual historical notes; ARCHITECTURE §8 topology table now lists the demo `receiver` service (was missing) and matches the running compose exactly (verified during the demo); DATA.md indexes match the migrations/schema (verified by the EXPLAIN pass); API.md samples section updated (Run 016); PHASES ticked; README license resolved; PRD scope unchanged (no requirement drift found); AGENTS.md unchanged (rules doc).
+- **e2e re-run after all page edits:** full suite 5/5 (2.4 min). One transient failure between runs: sign-up click stayed on /sign-up / hit `chrome-error://chromewebdata/` right after servers were force-killed and pages recompiled — clean retry passed; full clean run then passed 5/5. Not a code defect; noted for the flaky ledger.
+
+### Commands run and results (all real)
+
+- `pnpm demo`: exit 0 (see above); `pnpm lint` / `pnpm typecheck` / `pnpm build`: pass; `pnpm test`: pass; `pnpm test:e2e`: 5/5; `node e2e/a11y-audit.mjs`: 9/9; EXPLAINs: index-hits as listed; bundle sizes as listed.
+
+### Issues, risks, open questions
+
+- The GIF was skipped (screenshots instead) — stated plainly.
+- Demo/chaos throughput numbers remain laptop-shared-host numbers; the caveat is in README now.
+- `a11y-findings.json` is committed as audit evidence; regenerate anytime with `node e2e/a11y-audit.mjs` (needs the dev stack).
+
+### Next steps
+
+- Final suite on `main` after merge; local `v1.0.0` tag; AUTONOMOUS RUN SUMMARY (Phases 13–15).

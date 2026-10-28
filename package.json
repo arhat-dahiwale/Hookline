@@ -23,6 +23,7 @@
     "test:e2e:headed": "playwright test --headed",
     "proto:gen": "pnpm --filter @hookline/proto proto:gen",
     "check:dashboards": "node scripts/check-dashboards.mjs",
+    "demo": "node scripts/demo/run-demo.mjs",
     "test:cov": "pnpm --filter @hookline/server test:cov"
   },
   "devDependencies": {

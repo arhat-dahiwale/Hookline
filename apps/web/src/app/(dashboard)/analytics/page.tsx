@@ -17,7 +17,7 @@ import {
 import { useMemo, useState } from 'react';
 
 import { BreakerBadge } from '@/components/status-badge';
-import { EmptyBlock, ErrorBlock, LoadingBlock } from '@/components/view-states';
+import { EmptyBlock, ErrorBlock, LoadingBlock, isOrgRequiredError } from '@/components/view-states';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -127,15 +127,23 @@ export default function AnalyticsPage() {
       {loading ? (
         <LoadingBlock label="Loading analytics" />
       ) : error ? (
-        <ErrorBlock
-          title="Could not load analytics"
-          error={error}
-          onRetry={() => {
-            void overview.refetch();
-            void timeseries.refetch();
-            void breakdown.refetch();
-          }}
-        />
+        isOrgRequiredError(error) ? (
+          <EmptyBlock
+            title="Create an organization to get started"
+            description="Analytics summarize an organization's deliveries. Create or switch to one from the org switcher."
+            testId="org-required"
+          />
+        ) : (
+          <ErrorBlock
+            title="Could not load analytics"
+            error={error}
+            onRetry={() => {
+              void overview.refetch();
+              void timeseries.refetch();
+              void breakdown.refetch();
+            }}
+          />
+        )
       ) : !hasData ? (
         <EmptyBlock
           title="No activity in this window"

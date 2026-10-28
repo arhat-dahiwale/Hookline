@@ -11,7 +11,7 @@ import { createEndpointSchema } from '@hookline/shared';
 
 import { SecretDialog } from '@/components/secret-dialog';
 import { EndpointStatusBadge } from '@/components/status-badge';
-import { EmptyBlock, ErrorBlock, LoadingBlock } from '@/components/view-states';
+import { EmptyBlock, ErrorBlock, LoadingBlock, isOrgRequiredError } from '@/components/view-states';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -125,11 +125,19 @@ export default function EndpointsPage() {
       {list.isPending ? (
         <LoadingBlock label="Loading endpoints" />
       ) : list.isError ? (
-        <ErrorBlock
-          title="Could not load endpoints"
-          error={list.error}
-          onRetry={() => void list.refetch()}
-        />
+        isOrgRequiredError(list.error) ? (
+          <EmptyBlock
+            title="Create an organization to get started"
+            description="Endpoints live inside an organization. Create or switch to one from the org switcher."
+            testId="org-required"
+          />
+        ) : (
+          <ErrorBlock
+            title="Could not load endpoints"
+            error={list.error}
+            onRetry={() => void list.refetch()}
+          />
+        )
       ) : list.data.data.length === 0 ? (
         <EmptyBlock
           title="No endpoints yet"

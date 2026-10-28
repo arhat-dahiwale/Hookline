@@ -9,7 +9,7 @@ import { z } from 'zod';
 
 import { createEventSchema } from '@hookline/shared';
 
-import { EmptyBlock, ErrorBlock, LoadingBlock } from '@/components/view-states';
+import { EmptyBlock, ErrorBlock, LoadingBlock, isOrgRequiredError } from '@/components/view-states';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -144,11 +144,19 @@ export default function EventsPage() {
       {list.isPending ? (
         <LoadingBlock label="Loading events" />
       ) : list.isError ? (
-        <ErrorBlock
-          title="Could not load events"
-          error={list.error}
-          onRetry={() => void list.refetch()}
-        />
+        isOrgRequiredError(list.error) ? (
+          <EmptyBlock
+            title="Create an organization to get started"
+            description="Events live inside an organization. Create or switch to one from the org switcher."
+            testId="org-required"
+          />
+        ) : (
+          <ErrorBlock
+            title="Could not load events"
+            error={list.error}
+            onRetry={() => void list.refetch()}
+          />
+        )
       ) : list.data.data.length === 0 ? (
         <EmptyBlock
           title="No events found"

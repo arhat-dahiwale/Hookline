@@ -1,0 +1,75 @@
+[
+  {
+    "check": "icon buttons have accessible names",
+    "page": "/overview",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "check": "keyboard focus lands on interactive elements",
+    "page": "/overview",
+    "ok": true,
+    "detail": {
+      "tag": "A",
+      "text": "Overview"
+    }
+  },
+  {
+    "check": "focus indicator visible",
+    "page": "/overview",
+    "ok": true,
+    "detail": {
+      "outlineWidth": "1px",
+      "boxShadow": false,
+      "outlineStyle": "auto"
+    }
+  },
+  {
+    "check": "landmarks + h1 present",
+    "page": "/overview",
+    "ok": true,
+    "detail": {
+      "nav": true,
+      "main": true,
+      "h1": "Overview"
+    }
+  },
+  {
+    "check": "pages render light mode",
+    "page": "/overview,/endpoints,/deliveries",
+    "ok": true,
+    "detail": "screenshots saved"
+  },
+  {
+    "check": "no-org state guides instead of erroring",
+    "page": "/deliveries",
+    "ok": true,
+    "detail": "org-required block rendered"
+  },
+  {
+    "check": "theme toggle switches to dark",
+    "page": "/overview",
+    "ok": true,
+    "detail": {
+      "isDark": true
+    }
+  },
+  {
+    "check": "color samples captured (contrast eyeballed on screenshots)",
+    "page": "/overview",
+    "ok": true,
+    "detail": {
+      "lightPairs": 18,
+      "darkPairs": 18
+    }
+  },
+  {
+    "check": "mobile: no horizontal overflow, nav collapses",
+    "page": "/overview",
+    "ok": true,
+    "detail": {
+      "horizontalOverflow": false,
+      "hamburger": true
+    }
+  }
+]

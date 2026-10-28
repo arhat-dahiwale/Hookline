@@ -11,8 +11,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { trpc } from '@/lib/trpc';
 
 /**
- * Overview placeholder (Phase 7). Charts and KPIs arrive with the stats
- * router in Phase 11; today it proves the signed-in tRPC path end to end.
+ * Overview: endpoint health cards and quick links. Volume/success/latency
+ * charts live on the Analytics page (stats router, Phase 11).
  */
 export default function OverviewPage() {
   const endpointsQuery = trpc.endpoints.list.useQuery(undefined, {
@@ -37,7 +37,7 @@ export default function OverviewPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
           <p className="text-sm text-muted-foreground">
-            Placeholder dashboard — stats and charts land in Phase 11.
+            Endpoint health and quick links — charts live under Analytics.
           </p>
         </div>
         <Button
