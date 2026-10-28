@@ -936,3 +936,79 @@ Append-only. **After every run**, add a new entry at the **bottom** using the te
 ### Next steps
 
 - Final suite on `main` after merge; local `v1.0.0` tag; AUTONOMOUS RUN SUMMARY (Phases 13–15).
+
+---
+
+## Run 018: 2026-10-29 00:53 (+05:30)
+
+- **Agent / tool:** zcode, GLM-5.3
+- **Phase / task:** Phase 15 verification (autonomous verification run of Phases 0-15); entry also serves as the wrap-up for the deferred Phases 13-15 AUTONOMOUS RUN SUMMARY
+- **Status:** completed
+
+### What I did
+
+Verification only: ran the full suite fresh (Turbo `--force`), executed the README one-command demo twice, executed the verification samples, ran security spot checks, spot-checked all eight docs against the code, ran an axe-based accessibility pass, and fixed what failed. No features added.
+
+**PHASE 15 CHECKLIST RESULTS**
+
+| #   | Check                                           | Result                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| --- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | README commands, links, screenshots, benchmarks | PASS after 2 drift fixes (Status said "Phase 0"; demo cited Run 016 but ran in Run 017). All 24 referenced files exist; no TBD placeholders; benchmark section matches Run 015 exactly (12 CPU/7.6 GB, 1645/1645 events, 464 tracked succeeded, caveat stated). Commands exercised this run: dev compose up, `db:migrate` (via e2e), `db:seed` (idempotent no-op message, exit 0), `check:dashboards` (11 metrics valid), `proto:gen` (regenerates byte-identical output after Prettier — committed generated code is in sync), demo, full test suite, `test:e2e`                                                                                                                                                                       |
+| 2   | One-command demo from clean state               | PASS on run 2. Run 1 FAILED the zero-loss check with `nonTerminal: 1` (see defect 1) — events were never lost. Run 2: 1487/1487 events accounted for (298 tracked + 1189 k6 accepted), 298/298 tracked deliveries SUCCEEDED, 0 non-terminal, 0 dead, live WS log through nginx (2974 envelopes), replay returned 202 with a linked delivery (demo org summary: 6 events, 7 deliveries, 6 succeeded), chaos SIGKILLs under load, clean teardown                                                                                                                                                                                                                                                                                          |
+| 3   | Verification samples (API.md §6)                | Node + Python EXECUTED via `node scripts/check-samples.mjs` against signatures from the real production `signPayload` (accept + tamper-reject, all true). Go sample REVIEWED against the spec (timestamp.raw-body, HMAC-SHA256 hex, v1= prefix, timing-safe via hmac.Equal, tolerance) — NOT executed (no Go toolchain; installs are out of bounds)                                                                                                                                                                                                                                                                                                                                                                                     |
+| 4   | Security spot checks                            | SSRF suite 9/9 with ALLOW_INSECURE_ENDPOINTS off (global-setup default false; the spec boots without the override). Secret scan: 20 candidate values from .env pickaxe-scanned across ALL history plus key-like patterns (whsec_/hl_live_) — hits were only published dev placeholders (POSTGRES_PASSWORD/GRAFANA_ADMIN_PASSWORD values equal the committed .env.example dev defaults; no real credential ever committed). `.env` untracked and git-ignored. `/metrics` through nginx: live 404; the api port is not published to the host. Cross-tenant isolation: authz-matrix (REST/tRPC/WS/gRPC) + tenant 404s all pass. NOTE: dev placeholder passwords matching .env.example are by-design local-dev defaults, not leaked secrets |
+| 5   | Docs vs code (all eight)                        | PASS after 4 fixes (defects 4-7). Spot-checked 11 REST routes + scopes in API.md (incl. POST /v1/endpoints/{id}/test, which lives in delivery-engine/worker-test.controller.ts), 3 tables (events, deliveries, delivery_attempts — columns and every index) in DATA.md, the ARCHITECTURE module table, the WS envelope contract, the tRPC router set, and the README benchmark vs Run 015. PHASES.md rows now match reality (the Phase 15 row was `[ ]` while all tasks were `[x]` — fixed)                                                                                                                                                                                                                                             |
+| 6   | Accessibility + responsive                      | PASS after fix (defect 3). axe-core scans (new) plus the existing keyboard/landmark/theme/mobile checks: 12/12, exit 0. Light + dark render, theme toggle works, 390px width has no horizontal overflow and hamburger nav. Before/after org-required evidence PNGs exist (regenerated by this run — the historical "before" state lives in git history of the old PNGs)                                                                                                                                                                                                                                                                                                                                                                 |
+| 7   | Git                                             | Tree clean; all work on `verify/phase-15` merged into `main` with `--no-ff`; `v1.0.0` tag created locally on the merge AFTER everything passed; no remote exists (nothing pushed, nothing to push)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+
+**DEFECTS FOUND AND FIXED**
+
+1. **Demo chaos drain window too short (real bug in verification tooling):** `run-chaos.mjs` drained for 240s, but the reconciler's `in_progress` orphan grace is 300s (`IN_PROGRESS_GRACE_MS`, maintenance.ts) — a worker SIGKILLed late in the load window legally heals only after the drain deadline, so the zero-loss check reported a false `nonTerminal: 1` (product behavior was correct; zero events lost). Fixed: drain bound 420s with a comment tying it to the grace. Run 2 passed under real kills.
+2. **Flaky integration test:** `trpc-routers.spec.ts` "members read, admins replay single and bulk, since backfills" failed once under full-suite load (forced run 1: 111/112), passed run 2 and 3x in isolation. The test raced the async worker: it asserted attempt rows about 3 HTTP roundtrips after ingest. Fixed test-only: poll `deliveries.attempts` up to 30s (same pattern as `waitForDelivery` in delivery-engine.spec.ts); 112/112 on the final forced full run.
+3. **axe `label-content-name-mismatch` (serious) on every dashboard page:** the org-switcher button had `aria-label="Switch organization"` while its visible text is the org name. Fixed: the label now contains the visible text. axe scans added to `e2e/a11y-audit.mjs` (previously it had NO axe runs despite being the a11y tooling).
+4. **README Status line:** claimed "Phase 0" at v1.0.0 launch — fixed.
+5. **README demo citation:** credited Run 016; the demo ran in Run 017 — fixed.
+6. **ARCHITECTURE.md module table:** missing `api-docs` and `observability` (both exist with code) — rows added.
+7. **DATA.md section 7:** `hl:lock:{name}` documented but no lock code exists (maintenance single-firing comes from BullMQ job schedulers) — row removed, rule text added.
+8. **API.md Node verification sample:** threw on a missing signature header (the Python/Go samples handled it) — guarded; `scripts/check-samples.mjs` kept verbatim-in-sync; re-run passed.
+
+**DECISIONS MADE (no human available)**
+
+- Added dependency `@axe-core/playwright@4.14.0` (exact pin, root devDependency): the Phase 15 verification requires an axe-through-Playwright check; the existing audit script had none. Verified on the registry before install.
+- axe scans fail only on serious/critical violations; ALL violations are recorded in `docs/screenshots/a11y-findings.json`.
+- `v1.0.0` created locally only after every check passed, per run instructions. Annotated tag on the `main` merge commit. Never pushed (no remote configured).
+- The final suite ran on `verify/phase-15`, which was even with `main` before the fixes; after the `--no-ff` merge, `main` points at a superset tree of everything verified (the merge adds no code beyond the verified branch).
+
+**BOUNDARY EVENTS (self-reported per AGENTS.md section 14)**
+
+- I briefly wrote a demo log to `/tmp` (outside the project root) and a stray `nul` file at the repo root (Windows `2>nul` artifact in a bash-context scan). Both deleted within the same session.
+
+**COMMANDS RUN AND RESULTS (all real; final chain forced fresh, 0 cached)**
+
+- `pnpm lint`: pass (exit 0)
+- `pnpm typecheck`: pass (6/6 tasks, fresh 69s)
+- `pnpm test`: pass (53 tests: shared 15 + server 38)
+- `pnpm test:cov`: pass — 20 files / 112 tests, exit 0, thresholds enforced; **94.39% lines** global core-module (90 required); per-file floors met: signing 100, session.guard 100, roles.guard 100, api-key.guard 100, breaker 98.8, delivery-processor 90.58, events.service 94.38
+- `pnpm test:int`: forced run 1: 111/112 (flaky, defect 2); forced run 2: 112/112; final forced run after the fix: **112/112** (221s); plus 2 live executions inside `test:cov`
+- `pnpm build`: pass (4/4, fresh, includes web `next build`)
+- `pnpm test:e2e`: pass — **5/5** (3.5 min: redirects, wrong credentials, every dashboard page, dark mode, full journey with live delivery + replay)
+- `pnpm demo`: run 1 FAIL (defect 1, honest failure: non-zero exit, teardown clean) then fix then run 2 **PASS** exit 0, zero lost events
+- `node e2e/a11y-audit.mjs` (now with axe): 9/12 before the org-switcher fix, then **12/12, exit 0**
+- `node scripts/check-samples.mjs`: node_ok/python_ok/tamper-reject all true (before and after the sample guard fix)
+- `pnpm check:dashboards`: pass (11 metrics valid); `pnpm db:seed`: exit 0, idempotent no-op on an already-seeded DB; `pnpm proto:gen` + Prettier: byte-identical to committed generated code
+
+**NOT VERIFIED (stated plainly)**
+
+- GitHub Actions workflows: still unexecuted (no remote exists); syntax-validated only in Run 016
+- Go verification sample: reviewed against the spec, not executed (no Go toolchain on this machine)
+- README's standalone k6 docker one-liner and the observability compose stacks: not re-run this session (exercised in Phases 12/13 with recorded results; the demo exercised the same full topology)
+- The standalone `promtool` config check one-liner: not re-run this session (Phase 12 record stands)
+- Coverage thresholds are lines-based per AGENTS.md; branch coverage on the same modules is 78.18% — recorded, not a threshold violation
+
+**PHASES 13-15 WRAP-UP (deferred summary content)**
+
+- Phases 13, 14, and 15 are fully `[x]` and now independently verified. Deliveries orphaned by worker kills are healed (found in Phase 13, regression-tested); coverage enforced at 94.39% lines; CI YAML validated but unexecuted; the demo was verified twice more this run.
+- Accepted risks carried: laptop-shared-host throughput numbers (caveat documented); Grafana host port 3001 conflicts on this machine (demo uses the 3011 override); esbuild dev-path moderate advisory (accepted, Run 016); OTel api peer-range pin (accepted, Run 016).
+- Known risks: none new. The drain-window fix makes the chaos check strictly more correct; the axe addition makes the a11y evidence reproducible.
+
+**VERDICT: GO — v1.0.0 is done.** All Phase 15 checklist items pass, every defect found is fixed and re-verified, and the working tree is clean on `main` with the local `v1.0.0` tag. First thing a human should review: the LOGS entries for Runs 017-018 and the regenerated `docs/screenshots/` evidence; then `git tag -l` to see `v1.0.0` and decide whether to publish it (pushing remains out of scope).
