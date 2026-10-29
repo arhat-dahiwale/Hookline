@@ -1,7 +1,8 @@
-# Playwright E2E (dashboard journey). The suite itself runs locally and in
-# CI; the WORKFLOW file is authored and syntax-validated in Phase 14 but has
-# never been executed by GitHub Actions (nothing runs remotely in this
-# project) — see LOGS.md Run 016.
+# Playwright E2E (dashboard journey). The suite boots the real API (built
+# dist, ROLE=all) and the Next.js dev server against the dev compose
+# Postgres/Redis. CI has no .env (git-ignored), so a dev one is generated
+# first with crypto-random secrets (scripts/generate-dev-env.mjs) — the app
+# refuses to boot without validated config.
 name: e2e
 
 on:
@@ -21,6 +22,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      - name: Generate dev .env (compose + app config; secrets via node:crypto)
+        run: node scripts/generate-dev-env.mjs
       - name: Start dev dependencies (postgres + redis)
         run: docker compose -f docker-compose.dev.yml up -d --wait
       - run: pnpm db:migrate

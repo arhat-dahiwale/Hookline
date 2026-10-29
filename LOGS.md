@@ -1063,3 +1063,57 @@ Verification only: ran the full suite fresh (Turbo `--force`), executed the READ
 - GitHub CI logs were not directly readable from this environment; the diagnosis rests on exact-error reproduction, not on the log text alone. Note: PRs #1-#9 pin TS 5.9.3, which **cannot** emit the quoted diagnostic — if any of those PRs still fail after this lands, their logs need a fresh look (the issue summary likely pattern-matched PR #10's failure onto all of them).
 - PR #9 (Next 15→16) and PR #10's runtime/test behavior under the new majors remain unreviewed — typechecking is green, but those upgrades deserve their own pass before merge.
 - First thing a human should review: the one-file diff (`apps/web/src/types/css.d.ts`), then push `main` (push stays out of scope for agents). PRs pick the fix up via their merge refs once main is updated, or immediately via `@dependabot rebase` on each PR.
+
+---
+
+## Run 020: 2026-10-30 02:36 (+05:30)
+
+- **Agent / tool:** zcode, GLM-5.3
+- **Phase / task:** Post-launch maintenance (human-directed): two CI failures from the first real GitHub Actions runs — (1) e2e workflow `pnpm db:migrate` fails with `DATABASE_URL is required for drizzle-kit`; (2) ci integration job passes all 112 tests but fails the coverage threshold (`delivery-processor.ts` 87.05% lines < 90% floor)
+- **Status:** completed
+
+### What I did
+
+- **e2e env wiring (1):** root cause — CI has no `.env` (git-ignored by design); `drizzle.config.ts` and the app config both load `.env`/`../../.env` from disk. `.env.example` placeholders are NOT valid boot config (`BETTER_AUTH_SECRET` needs ≥32 chars, the placeholder is 30; `ENCRYPTION_KEY` must decode to 32 bytes base64). Fix: new `scripts/generate-dev-env.mjs` writes a dev `.env` from `.env.example` with `node:crypto`-generated secrets (AGENTS.md cross-platform rule), and **refuses to touch an existing `.env`** — the "never overwrite .env" rule is enforced structurally. `e2e.yml` runs it after `pnpm build`, before compose/db:migrate/test:e2e; compose substitution, drizzle-kit and the app boot all read that one file, and the explicit `ALLOW_INSECURE_ENDPOINTS: true` step env still wins over it (app-config merges process.env last, by design).
+- Script verified three ways: refusal against the real `.env` (untouched, exit 0), generation to a scratch path (caught a real ENOENT bug — missing parent dir — fixed with `mkdirSync`), and the generated file validated against the REAL `parseEnv` from the built dist (ROLE=all, PORT=4000, 64-char auth secret, 32-byte key, 64-char gRPC token, compose-port DATABASE_URL).
+- **Coverage threshold (2):** reproduced locally — same uncovered groups (`…15-117,246,303`) at 90.58% local vs 87.05% CI; the text reporter truncates the full list, and the local/CI delta is race-dependent branch execution (CI misses branches that local races happen to hit). New `apps/server/test/int/delivery-processor.spec.ts` (7 tests) drives EVERY guard/redelay/failure branch directly with pre-arranged state instead of timing: unknown delivery + cross-org skip, terminal-state skip, disabled/deleted endpoint cancel, event row missing (event deleted via `session_replication_role = replica` — the FK is ON DELETE CASCADE), rate-limit deny with a drained token bucket + live-token stub job (covers the with-job `moveToDelayed` path), lost-lock stub job with an open breaker (covers the enqueue fallback), and the worker `failed` handler via a corrupted AES-GCM blob failing decryption on a real queued job.
+- **Diagnosed the CI stderr noise:** the deny→`moveToDelayed`→return pattern with a REAL queued job makes BullMQ's worker attempt `moveToFinished`/`moveToFailed` on an already-moved job — benign `Missing lock` (code -2) stderr, the same noise the CI tracing test produced. My first rate-limit test used a real queued job and was FLAKY (failed once in a full-file run, passed solo) — replaced with the stub-job version; recorded here per the flaky-test rule.
+- Minor API find: prom-client v15's `Counter.get()` returns a promise — first draft read it synchronously; fixed to await.
+
+### Files changed
+
+- `apps/server/test/int/delivery-processor.spec.ts`: new — 7 deterministic tests for the processor's guard/redelay/failure branches
+- `scripts/generate-dev-env.mjs`: new — dev `.env` bootstrap from `.env.example` with generated secrets; never overwrites
+- `.github/workflows/e2e.yml`: generate the dev `.env` before compose/db:migrate/test:e2e; stale header comment updated (the workflow has now actually executed)
+- `README.md`: scripts table row for `generate-dev-env`
+- `LOGS.md`: this entry
+
+### Decisions made
+
+- No new dependencies; no threshold weakened — the 90% floor stays and the fix ADDS deterministic coverage (`delivery-processor.ts` reached **100% lines** locally).
+- The explicit `pnpm db:migrate` step stays in e2e.yml (fast fail before the ~1 min browser download) even though the Playwright webServer also migrates.
+- The full "rate-limited job re-runs after the delay" flow is intentionally NOT exercised with a real queue job (racy in BullMQ 6, see above); the delayed-retry schedule itself is already covered by delivery-engine.spec.
+- Local scratch dirs under gitignored `tmp/` pollute `pnpm lint` (ESLint does not skip gitignored dirs) — both scratch trees removed after use; recorded as a hygiene trap, no repo change.
+
+### Commands run and results (all real)
+
+- `pnpm --filter @hookline/server build`: pass (provides dist parseEnv for validation)
+- `node scripts/generate-dev-env.mjs` (real `.env` present): refused, exit 0, `.env` untouched
+- `HOOKLINE_ENV_OUT=… node scripts/generate-dev-env.mjs` + `parseEnv` validation: pass (after the ENOENT fix)
+- Solo spec runs: 7/7 (one interim failure: the pre-fix real-queue rate-limit test, replaced as flaky)
+- `pnpm --filter @hookline/server test:cov`: pass — 21 files / **119 tests** (112 + 7 new), exit 0; `delivery-processor.ts` **100% lines** (was 90.58% local / 87.05% CI); global lines 95.6% (was 94.39%)
+- `pnpm lint`: pass (2 transient errors were my `tmp/` scratch file — removed)
+- `pnpm typecheck`: pass (6/6)
+- `pnpm build`: pass (4/4)
+- `e2e.yml`/`ci.yml` YAML parse check: OK (GitHub Actions themselves cannot run locally — long-standing documented limitation)
+- `pnpm test:e2e` locally: NOT run — nothing in the e2e code path changed; the workflow delta (env wiring) exists locally as the real `.env`. The fresh-checkout aspect is only reproducible on GitHub; stated plainly.
+
+### Docs updated
+
+- `README.md` (scripts table), `LOGS.md`. API/DATA/ARCHITECTURE/PRD/PHASES unaffected (no routes, tables, module behavior, or scope changes).
+
+### Issues, risks, open questions
+
+- The BullMQ `Missing lock` stderr (code -2) is EXPECTED noise from the redelay pattern and stall-retries under load; correctness comes from the atomic Postgres attempt claim. It shows in CI logs (tracing/ssrf specs) — cosmetic, documented here.
+- The e2e workflow fix cannot be fully verified locally (fresh-checkout aspect, GitHub runners); the first real run will confirm. Risk is low: the generated env is validated against the actual boot schema.
+- If a future CI run still fails at server boot in e2e, the next suspect is Playwright's webServer `env` merge semantics (process.env + overrides is the documented behavior).
