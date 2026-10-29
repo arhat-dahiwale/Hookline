@@ -417,6 +417,7 @@ docker run --rm -v "$(pwd)/scripts/load:/scripts:ro" -v "$(pwd)/scripts/load/out
 | `pnpm db:seed`                         | Seed demo data                                                    |
 | `pnpm proto:gen`                       | Generate gRPC code from `.proto` files                            |
 | `pnpm check:dashboards`                | Fail if a Grafana dashboard references an unregistered metric     |
+| `node scripts/generate-dev-env.mjs`    | Create a local `.env` from `.env.example` with generated secrets  |
 
 ## One-command demo
 
