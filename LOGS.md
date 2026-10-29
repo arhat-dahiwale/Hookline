@@ -1012,3 +1012,54 @@ Verification only: ran the full suite fresh (Turbo `--force`), executed the READ
 - Known risks: none new. The drain-window fix makes the chaos check strictly more correct; the axe addition makes the a11y evidence reproducible.
 
 **VERDICT: GO — v1.0.0 is done.** All Phase 15 checklist items pass, every defect found is fixed and re-verified, and the working tree is clean on `main` with the local `v1.0.0` tag. First thing a human should review: the LOGS entries for Runs 017-018 and the regenerated `docs/screenshots/` evidence; then `git tag -l` to see `v1.0.0` and decide whether to publish it (pushing remains out of scope).
+
+---
+
+## Run 019: 2026-10-30 01:05 (+05:30)
+
+- **Agent / tool:** zcode, GLM-5.3
+- **Phase / task:** Post-launch maintenance (human-directed): fix the shared CI build blocker behind Dependabot PRs #1-#10 — `@hookline/web` fails `pnpm build` in the `ci` and `e2e` workflows before tests run
+- **Status:** completed
+
+### What I did
+
+- Root-caused the reported CI error (`Type error: Cannot find module or type declarations for side-effect import of './globals.css'` at `apps/web/src/app/layout.tsx:6:8`) **empirically, byte-for-byte**: running TypeScript **6.0.3** (the version Dependabot PR #10 pins in the shared root lockfile) against `apps/web/tsconfig.json` reproduces exactly `error TS2882: Cannot find module or type declarations for side-effect import of './globals.css'.` TypeScript 6 made unresolvable side-effect imports an error **by default** (passing `--noUncheckedSideEffectImports false` under TS 6 makes it green, confirming the mechanism). TypeScript 5.9.3 — pinned by `main` and PRs #1-#9 — does not check unresolvable side-effect imports and its lib does not even contain that diagnostic string.
+- Ruled out the other suspects with real runs, not guesses: `globals.css` exists and is tracked; `import './globals.css'` is the only plain-CSS side-effect import in the app; node v24.2.0 matches `.nvmrc` (24); local pnpm 12.8.1 matches `packageManager`; a fully fresh-state web build (no `next-env.d.ts` — it is gitignored, no `.next/`, no tsbuildinfo) **passes** on `main`; Next's own global type declarations cover only `*.module.css`/`*.module.scss`, never plain `*.css`; `git fetch origin` shows `origin/main` identical to local `main` (3beda8f, nothing merged upstream, 10 open PR refs).
+- **Fix (one file):** added tracked ambient declaration `apps/web/src/types/css.d.ts` with `declare module '*.css';` so plain-CSS side-effect imports resolve under any TypeScript version. Next's more specific `*.module.css` declarations still win for real CSS modules (none exist today). Because GitHub PR CI type-checks the PR-merged-onto-`main` tree, this fix landing on `main` carries into all ten PRs, including PR #10 — verified directly under TS 6.0.3 (below).
+- Bonus TS 6.0.3 scout (`tsc --noEmit`) across `apps/server`, `packages/shared`, `packages/proto`: **all pass**, so PR #10's "tsc passes under TS 6" criterion looks met repo-wide. PR #9 (Next 16) was NOT tested — it needs its own upgrade pass.
+
+### Files changed
+
+- `apps/web/src/types/css.d.ts`: new — ambient `*.css` module declaration with a why-comment (TS2882 under TS 6 defaults; Next only declares `*.module.css`)
+- `LOGS.md`: this entry
+
+### Decisions made
+
+- Did **not** commit `next-env.d.ts` or add it to tsconfig `include`: the fresh-state build proves it is not needed, and adding it would introduce a `TS6053` footgun (its generated `/// <reference path="./.next/types/routes.d.ts" />` dangles whenever `.next` is cleaned while the file remains). Keeping the phase-13 decision to gitignore it.
+- Fixed the error class at the repo layer instead of downgrading/pinning anything: **no dependency changes**, no lint rule disabled, no TS strictness weakened (the declaration adds resolution; it does not suppress checking of real modules).
+- No new dependencies. `typescript@6.0.3` was fetched via `npm pack` into gitignored `tmp/` purely as a verification scratch and deleted afterwards (while it existed it also broke `pnpm lint` — ESLint scanned the unpacked compiler sources; that mid-run lint failure was tooling pollution, not a repo defect).
+- `pnpm test:int` intentionally not run: this task adds one ambient type declaration and touches no DB/Redis/queues/HTTP surface (AGENTS.md §8 condition), recorded here per the "say so rather than skip silently" rule.
+
+### Commands run and results (all real)
+
+- Repro (pre-fix): `node tmp/ts6/package/bin/tsc --noEmit -p apps/web/tsconfig.json` (TS 6.0.3) → **FAIL TS2882, exact CI error**; post-fix → pass
+- Mechanism check (pre-fix): same with `--noUncheckedSideEffectImports false` → pass
+- `pnpm --filter @hookline/web exec tsc --noEmit --incremental false` (TS 5.9.3, uncached): pass
+- Fresh-state `pnpm --filter @hookline/web build` (no next-env/.next/tsbuildinfo, CI-like): pass, and `next build` regenerates `next-env.d.ts` itself
+- `pnpm lint`: pass (exit 0; one mid-run fail caused by my `tmp/ts6` scratch, removed — repo lint clean)
+- `pnpm typecheck`: pass (6/6 tasks)
+- `pnpm test` (turbo `--force`, 0 cached): pass (4/4 tasks)
+- `pnpm build` (turbo `--force`, 0 cached): pass (4/4 tasks, includes web `next build`, 1m08s)
+- `pnpm test:int`: not run (see decision above)
+- TS 6.0.3 `--noEmit` scouts: `apps/server` pass, `packages/shared` pass, `packages/proto` pass
+- `git fetch origin` + `git ls-remote origin 'refs/pull/*/head'`: origin/main == local main; PRs #1-#10 open; lockfile survey: only PR #10 contains `typescript@6.0.3` (45 hits), others 0
+
+### Docs updated
+
+- `LOGS.md` only. No route/table/module/config-var changes (API/DATA/ARCHITECTURE/README/PRD unaffected); PHASES.md is fully complete and this is post-`v1.0.0` maintenance.
+
+### Issues, risks, open questions
+
+- GitHub CI logs were not directly readable from this environment; the diagnosis rests on exact-error reproduction, not on the log text alone. Note: PRs #1-#9 pin TS 5.9.3, which **cannot** emit the quoted diagnostic — if any of those PRs still fail after this lands, their logs need a fresh look (the issue summary likely pattern-matched PR #10's failure onto all of them).
+- PR #9 (Next 15→16) and PR #10's runtime/test behavior under the new majors remain unreviewed — typechecking is green, but those upgrades deserve their own pass before merge.
+- First thing a human should review: the one-file diff (`apps/web/src/types/css.d.ts`), then push `main` (push stays out of scope for agents). PRs pick the fix up via their merge refs once main is updated, or immediately via `@dependabot rebase` on each PR.
