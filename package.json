@@ -32,7 +32,7 @@
     "@commitlint/config-conventional": "21.2.4",
     "@eslint/js": "10.0.1",
     "@hookline/config": "workspace:*",
-    "@playwright/test": "1.56.0",
+    "@playwright/test": "1.64.1",
     "eslint": "10.13.0",
     "eslint-config-prettier": "10.1.8",
     "husky": "9.1.7",
@@ -41,7 +41,7 @@
     "tsx": "4.23.15",
     "turbo": "2.11.10",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.72.0",
+    "typescript-eslint": "8.72.1",
     "vitest": "4.1.12",
     "ws": "8.22.0"
   },
